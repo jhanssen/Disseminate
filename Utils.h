@@ -13,6 +13,7 @@ enum KeyType { WhiteList, BlackList };
 void setKeyType(KeyType type);
 void addKey(int64_t key, uint64_t mask);
 void removeKey(int64_t key, uint64_t mask);
+void clearKeys();
 
 bool start();
 void stop();

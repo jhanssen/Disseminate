@@ -235,3 +235,8 @@ void capture::removeKey(int64_t key, uint64_t mask)
     if (vec.empty())
         keyList.keys.erase(it);
 }
+
+void capture::clearKeys()
+{
+    keyList.keys.clear();
+}
