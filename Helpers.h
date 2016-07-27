@@ -22,10 +22,10 @@ inline QString toQString(const std::string& str)
 
 inline QString keyToQString(int64_t key, uint64_t mask)
 {
-    QString keystr = helpers::toQString(capture::maskToString(mask));
+    QString keystr = helpers::toQString(broadcast::maskToString(mask));
     if (!keystr.isEmpty())
         keystr += "-";
-    return keystr + helpers::toQString(capture::keyToString(key));
+    return keystr + helpers::toQString(broadcast::keyToString(key));
 }
 } // namespace helpers
 

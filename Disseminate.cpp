@@ -12,7 +12,7 @@ Disseminate::Disseminate(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Disseminate),
     selector(0),
-    capturing(false)
+    broadcasting(false)
 {
     ui->setupUi(this);
 
@@ -38,13 +38,13 @@ Disseminate::Disseminate(QWidget *parent) :
 
 Disseminate::~Disseminate()
 {
-    capture::stop();
+    broadcast::stop();
     delete ui;
 }
 
 void Disseminate::addWindow()
 {
-    if (capturing)
+    if (broadcasting)
         stopBroadcast();
 
     if (!selector) {
@@ -60,47 +60,47 @@ void Disseminate::windowSelected(const QString& name, uint64_t psn, uint64_t win
     if (!helpers::contains(ui->windowList, name)) {
         const QString str = name + " (" + QString::number(psn) + ")";
         ui->windowList->addItem(new WindowItem(str, name, psn, winid, image));
-        capture::addWindow(psn);
+        broadcast::addWindow(psn);
     }
 }
 
 void Disseminate::removeWindow()
 {
-    if (capturing)
+    if (broadcasting)
         stopBroadcast();
 
     const auto& items = ui->windowList->selectedItems();
     for (auto& item : items) {
-        capture::removeWindow(static_cast<WindowItem*>(item)->wpsn);
+        broadcast::removeWindow(static_cast<WindowItem*>(item)->wpsn);
         delete item;
     }
 }
 
 void Disseminate::startBroadcast()
 {
-    if (capturing)
+    if (broadcasting)
         return;
     if (ui->windowList->count() < 2) {
-        QMessageBox::information(this, "No windows to capture", "Add at least two windows to capture before capturing");
+        QMessageBox::information(this, "No windows to broadcast", "Add at least two windows to broadcast before capturing");
         return;
     }
-    if (!capture::start()) {
-        QMessageBox::critical(this, "Unable to capture", "Unable to capture, ensure that the app is allowed to control your computer");
+    if (!broadcast::start()) {
+        QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
         return;
     }
-    capturing = true;
+    broadcasting = true;
     ui->actionStart->setEnabled(false);
     ui->actionStop->setEnabled(true);
 }
 
 void Disseminate::stopBroadcast()
 {
-    if (!capturing)
+    if (!broadcasting)
         return;
     ui->actionStart->setEnabled(true);
     ui->actionStop->setEnabled(false);
-    capture::stop();
-    capturing = false;
+    broadcast::stop();
+    broadcasting = false;
 }
 
 void Disseminate::addKey()
@@ -110,7 +110,7 @@ void Disseminate::addKey()
         connect(&readKey, &KeyInput::keyAdded, this, &Disseminate::keyAdded);
         readKey.exec();
     } else {
-        QMessageBox::critical(this, "Unable to capture", "Unable to capture, ensure that the app is allowed to control your computer");
+        QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
     }
 }
 
@@ -119,7 +119,7 @@ void Disseminate::removeKey()
     const auto& items = ui->keyList->selectedItems();
     for (auto& item : items) {
         const KeyItem* kitem = static_cast<const KeyItem*>(item);
-        capture::removeKey(kitem->key, kitem->mask);
+        broadcast::removeKey(kitem->key, kitem->mask);
         delete item;
     }
 
@@ -131,7 +131,7 @@ void Disseminate::keyAdded(int64_t key, uint64_t mask)
     const QString name = helpers::keyToQString(key, mask);
     if (!helpers::contains(ui->keyList, name)) {
         ui->keyList->addItem(new KeyItem(name, key, mask));
-        capture::addKey(key, mask);
+        broadcast::addKey(key, mask);
 
         saveConfig();
     }
@@ -140,7 +140,7 @@ void Disseminate::keyAdded(int64_t key, uint64_t mask)
 void Disseminate::whiteListChanged()
 {
     if (ui->whitelistRadio->isChecked()) {
-        capture::setKeyType(capture::WhiteList);
+        broadcast::setKeyType(broadcast::WhiteList);
         saveConfig();
     }
 }
@@ -148,7 +148,7 @@ void Disseminate::whiteListChanged()
 void Disseminate::blackListChanged()
 {
     if (ui->blacklistRadio->isChecked()) {
-        capture::setKeyType(capture::BlackList);
+        broadcast::setKeyType(broadcast::BlackList);
         saveConfig();
     }
 }
@@ -178,7 +178,7 @@ void Disseminate::loadConfig()
         prefs.automaticWindows.append(str);
     }
 
-    capture::clearKeys();
+    broadcast::clearKeys();
     ui->keyList->clear();
 
     const QList<QVariant> keys = settings.value("keys").toList();
@@ -192,7 +192,7 @@ void Disseminate::loadConfig()
                 const QString name = helpers::keyToQString(k, m);
                 if (!helpers::contains(ui->keyList, name)) {
                     ui->keyList->addItem(new KeyItem(name, k, m));
-                    capture::addKey(k, m);
+                    broadcast::addKey(k, m);
                 }
             }
         }
@@ -201,11 +201,11 @@ void Disseminate::loadConfig()
     if (settings.value("keyType").toString() != "blacklist") {
         ui->whitelistRadio->setChecked(true);
         ui->blacklistRadio->setChecked(false);
-        capture::setKeyType(capture::WhiteList);
+        broadcast::setKeyType(broadcast::WhiteList);
     } else {
         ui->whitelistRadio->setChecked(false);
         ui->blacklistRadio->setChecked(true);
-        capture::setKeyType(capture::BlackList);
+        broadcast::setKeyType(broadcast::BlackList);
     }
 }
 
@@ -241,12 +241,12 @@ void Disseminate::applyConfig()
 
 void Disseminate::reloadWindows()
 {
-    const bool cap = capturing;
+    const bool cap = broadcasting;
     if (cap)
         stopBroadcast();
 
     const QList<WindowSelector::Window> windows = WindowSelector::getWindowList();
-    capture::clearWindows();
+    broadcast::clearWindows();
 
     QList<WindowSelector::Window> current;
     const int windowCount = ui->windowList->count();
@@ -261,7 +261,7 @@ void Disseminate::reloadWindows()
         if (windows.contains(c)) {
             const QString str = c.name + " (" + QString::number(c.psn) + ")";
             ui->windowList->addItem(new WindowItem(str, c.name, c.psn, c.winid, c.icon));
-            capture::addWindow(c.psn);
+            broadcast::addWindow(c.psn);
         }
     }
     // then readd automatic windows
@@ -273,7 +273,7 @@ void Disseminate::reloadWindows()
                 const QString str = win.name + " (" + QString::number(win.psn) + ")";
                 if (!helpers::contains(ui->windowList, str)) {
                     ui->windowList->addItem(new WindowItem(str, win.name, win.psn, win.winid, win.icon));
-                    capture::addWindow(win.psn);
+                    broadcast::addWindow(win.psn);
                 }
             }
         }

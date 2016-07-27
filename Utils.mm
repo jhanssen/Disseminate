@@ -41,15 +41,15 @@ struct ReadKey
 
 struct KeyList
 {
-    capture::KeyType type;
+    broadcast::KeyType type;
     std::unordered_map<int64_t, std::vector<uint64_t> > keys;
 };
 
 static Windows windows;
 static ReadKey readKey = { nullptr, nullptr, nullptr };
-static KeyList keyList = { capture::WhiteList, std::unordered_map<int64_t, std::vector<uint64_t> >() };
+static KeyList keyList = { broadcast::WhiteList, std::unordered_map<int64_t, std::vector<uint64_t> >() };
 
-void capture::addWindow(uint64_t window)
+void broadcast::addWindow(uint64_t window)
 {
     ProcessSerialNumber psn;
     psn.highLongOfPSN = window >> 32;
@@ -57,7 +57,7 @@ void capture::addWindow(uint64_t window)
     windows.psns.push_back(psn);
 }
 
-void capture::removeWindow(uint64_t window)
+void broadcast::removeWindow(uint64_t window)
 {
     ProcessSerialNumber psn;
     psn.highLongOfPSN = window >> 32;
@@ -73,7 +73,7 @@ void capture::removeWindow(uint64_t window)
     }
 }
 
-void capture::clearWindows()
+void broadcast::clearWindows()
 {
     assert(windows.sources.empty());
     windows.psns.clear();
@@ -105,14 +105,14 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
 
         const auto keyit = keyList.keys.find(virt);
         switch (keyList.type) {
-        case capture::WhiteList: {
+        case broadcast::WhiteList: {
             if (keyit == keyList.keys.end())
                 return event;
             const auto& vec = keyit->second;
             if (std::find(vec.begin(), vec.end(), flags) == vec.end())
                 return event;
             break; }
-        case capture::BlackList: {
+        case broadcast::BlackList: {
             if (keyit == keyList.keys.end())
                 break;
             const auto& vec = keyit->second;
@@ -150,7 +150,7 @@ CGEventRef readkeyCGEventCallback(CGEventTapProxy /*proxy*/,
     return event;
 }
 
-bool capture::start()
+bool broadcast::start()
 {
     stop();
 
@@ -176,7 +176,7 @@ bool capture::start()
     return true;
 }
 
-void capture::stop()
+void broadcast::stop()
 {
     CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
     for (auto& source : windows.sources) {
@@ -187,7 +187,7 @@ void capture::stop()
     windows.sources.clear();
 }
 
-bool capture::startReadKey(const std::function<void(int64_t, uint64_t)>& func)
+bool broadcast::startReadKey(const std::function<void(int64_t, uint64_t)>& func)
 {
     stopReadKey();
 
@@ -204,7 +204,7 @@ bool capture::startReadKey(const std::function<void(int64_t, uint64_t)>& func)
     return true;
 }
 
-void capture::stopReadKey()
+void broadcast::stopReadKey()
 {
     if (readKey.source) {
         CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
@@ -215,17 +215,17 @@ void capture::stopReadKey()
     }
 }
 
-void capture::setKeyType(KeyType type)
+void broadcast::setKeyType(KeyType type)
 {
     keyList.type = type;
 }
 
-void capture::addKey(int64_t key, uint64_t mask)
+void broadcast::addKey(int64_t key, uint64_t mask)
 {
     keyList.keys[key].push_back(mask);
 }
 
-void capture::removeKey(int64_t key, uint64_t mask)
+void broadcast::removeKey(int64_t key, uint64_t mask)
 {
     auto it = keyList.keys.find(key);
     assert(it != keyList.keys.end());
@@ -237,12 +237,12 @@ void capture::removeKey(int64_t key, uint64_t mask)
         keyList.keys.erase(it);
 }
 
-void capture::clearKeys()
+void broadcast::clearKeys()
 {
     keyList.keys.clear();
 }
 
-std::string capture::keyToString(int64_t key)
+std::string broadcast::keyToString(int64_t key)
 {
     switch (key) {
     case kVK_ANSI_A:
@@ -473,7 +473,7 @@ std::string capture::keyToString(int64_t key)
     return "Unknown";
 }
 
-std::string capture::maskToString(uint64_t mask)
+std::string broadcast::maskToString(uint64_t mask)
 {
     std::string m;
     if (mask & kCGEventFlagMaskAlphaShift)

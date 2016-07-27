@@ -5,7 +5,7 @@
 #include <functional>
 #include <string>
 
-namespace capture {
+namespace broadcast {
 void addWindow(uint64_t window);
 void removeWindow(uint64_t window);
 void clearWindows();

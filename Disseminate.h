@@ -46,7 +46,7 @@ private:
 private:
     Ui::Disseminate *ui;
     WindowSelector* selector;
-    bool capturing;
+    bool broadcasting;
 
     Preferences::Config prefs;
 };

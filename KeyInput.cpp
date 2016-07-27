@@ -10,7 +10,7 @@ KeyInput::KeyInput(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this, &KeyInput::accepted, this, &KeyInput::emitKeyAdded);
-    capturing = capture::startReadKey([this](int64_t key, uint64_t flags) {
+    capturing = broadcast::startReadKey([this](int64_t key, uint64_t flags) {
             currentKey = key;
             currentFlags = flags;
             updateKey();
@@ -19,7 +19,7 @@ KeyInput::KeyInput(QWidget *parent) :
 
 KeyInput::~KeyInput()
 {
-    capture::stopReadKey();
+    broadcast::stopReadKey();
     delete ui;
 }
 
