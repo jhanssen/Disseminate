@@ -25,6 +25,24 @@
         <widget class="QListWidget" name="windowList"/>
        </item>
        <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QPushButton" name="addWindow">
+           <property name="text">
+            <string>Add Window</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="removeWindow">
+           <property name="text">
+            <string>Remove Window</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QPushButton" name="reloadWindows">
          <property name="text">
           <string>Reload Windows</string>
@@ -117,36 +135,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionAdd"/>
-   <addaction name="actionRemove"/>
-   <addaction name="separator"/>
    <addaction name="actionStart"/>
    <addaction name="actionStop"/>
   </widget>
-  <action name="actionAdd">
-   <property name="icon">
-    <iconset resource="icons.qrc">
-     <normaloff>:/icons/icons/ic_add_circle_black_48dp.png</normaloff>:/icons/icons/ic_add_circle_black_48dp.png</iconset>
-   </property>
-   <property name="text">
-    <string>Add</string>
-   </property>
-   <property name="toolTip">
-    <string>Add Window</string>
-   </property>
-  </action>
-  <action name="actionRemove">
-   <property name="icon">
-    <iconset resource="icons.qrc">
-     <normaloff>:/icons/icons/ic_remove_circle_black_48dp.png</normaloff>:/icons/icons/ic_remove_circle_black_48dp.png</iconset>
-   </property>
-   <property name="text">
-    <string>Remove</string>
-   </property>
-   <property name="toolTip">
-    <string>Remove Window</string>
-   </property>
-  </action>
   <action name="actionStart">
    <property name="icon">
     <iconset resource="icons.qrc">

@@ -19,8 +19,9 @@ Disseminate::Disseminate(QWidget *parent) :
     loadConfig();
     applyConfig();
 
-    connect(ui->actionAdd, &QAction::triggered, this, &Disseminate::addWindow);
-    connect(ui->actionRemove, &QAction::triggered, this, &Disseminate::removeWindow);
+    connect(ui->addWindow, &QPushButton::clicked, this, &Disseminate::addWindow);
+    connect(ui->removeWindow, &QPushButton::clicked, this, &Disseminate::removeWindow);
+
     connect(ui->actionStart, &QAction::triggered, this, &Disseminate::startBroadcast);
     connect(ui->actionStop, &QAction::triggered, this, &Disseminate::stopBroadcast);
 
