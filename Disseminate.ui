@@ -148,7 +148,7 @@
     <string>Start</string>
    </property>
    <property name="toolTip">
-    <string>Start Broadcast</string>
+    <string>Start Broadcasting</string>
    </property>
   </action>
   <action name="actionStop">
