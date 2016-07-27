@@ -32,6 +32,8 @@ private slots:
     void whiteListChanged();
     void blackListChanged();
 
+    void preferences();
+
 private:
     Ui::Disseminate *ui;
     WindowSelector* selector;

@@ -17,6 +17,8 @@ Disseminate::Disseminate(QWidget *parent) :
     connect(ui->actionStart, &QAction::triggered, this, &Disseminate::startBroadcast);
     connect(ui->actionStop, &QAction::triggered, this, &Disseminate::stopBroadcast);
 
+    connect(ui->actionPreferences, &QAction::triggered, this, &Disseminate::preferences);
+
     connect(ui->addKey, &QPushButton::clicked, this, &Disseminate::addKey);
     connect(ui->removeKey, &QPushButton::clicked, this, &Disseminate::removeKey);
 
@@ -116,4 +118,9 @@ void Disseminate::blackListChanged()
     if (ui->blacklistRadio->isChecked()) {
         capture::setKeyType(capture::BlackList);
     }
+}
+
+void Disseminate::preferences()
+{
+#warning preferences, but I cant remember what to put here
 }

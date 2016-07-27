@@ -93,6 +93,7 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionPreferences"/>
    </widget>
    <addaction name="menuHello"/>
   </widget>
@@ -164,6 +165,11 @@
    </property>
    <property name="toolTip">
     <string>Stop Broadcasting</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences</string>
    </property>
   </action>
  </widget>
