@@ -21,12 +21,16 @@ private slots:
     void removeWindow();
 
     void windowSelected(const QString& name, uint64_t window);
+    void keyAdded(int64_t key, uint64_t mask);
 
     void startBroadcast();
     void stopBroadcast();
 
     void addKey();
     void removeKey();
+
+    void whiteListChanged();
+    void blackListChanged();
 
 private:
     Ui::Disseminate *ui;

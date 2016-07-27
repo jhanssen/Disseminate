@@ -17,8 +17,12 @@ public:
 
     bool valid() const { return capturing; }
 
+protected:
+    void keyPressEvent(QKeyEvent*);
+    void keyReleaseEvent(QKeyEvent*);
+
 signals:
-    void keyAdded(int64_t key);
+    void keyAdded(int64_t key, uint64_t mask);
 
 private slots:
     void emitKeyAdded();
@@ -29,6 +33,7 @@ private:
 private:
     Ui::KeyInput *ui;
     int64_t currentKey;
+    uint64_t currentFlags;
     bool capturing;
 };
 

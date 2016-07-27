@@ -9,8 +9,9 @@ KeyInput::KeyInput(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this, &KeyInput::accepted, this, &KeyInput::emitKeyAdded);
-    capturing = capture::startReadKey([this](int64_t key) {
+    capturing = capture::startReadKey([this](int64_t key, uint64_t flags) {
             currentKey = key;
+            currentFlags = flags;
             updateKey();
         });
 }
@@ -24,10 +25,18 @@ KeyInput::~KeyInput()
 void KeyInput::emitKeyAdded()
 {
     if (currentKey)
-        emit keyAdded(currentKey);
+        emit keyAdded(currentKey, currentFlags);
 }
 
 void KeyInput::updateKey()
 {
-    ui->keyEdit->setText(QString::number(currentKey));
+    ui->keyEdit->setText(QString::number(currentKey) + " (" + QString::number(currentFlags) + ")");
+}
+
+void KeyInput::keyPressEvent(QKeyEvent*)
+{
+}
+
+void KeyInput::keyReleaseEvent(QKeyEvent*)
+{
 }

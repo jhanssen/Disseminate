@@ -19,6 +19,9 @@ Disseminate::Disseminate(QWidget *parent) :
 
     connect(ui->addKey, &QPushButton::clicked, this, &Disseminate::addKey);
     connect(ui->removeKey, &QPushButton::clicked, this, &Disseminate::removeKey);
+
+    connect(ui->whitelistRadio, &QRadioButton::toggled, this, &Disseminate::whiteListChanged);
+    connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
 }
 
 Disseminate::~Disseminate()
@@ -39,16 +42,17 @@ void Disseminate::addWindow()
 
 void Disseminate::windowSelected(const QString& name, uint64_t window)
 {
-    if (ui->windowList->findItems(name, Qt::MatchFixedString).isEmpty())
-        ui->windowList->addItem(new Item(name, window));
-    capture::addWindow(window);
+    if (ui->windowList->findItems(name, Qt::MatchFixedString).isEmpty()) {
+        ui->windowList->addItem(new WindowItem(name, window));
+        capture::addWindow(window);
+    }
 }
 
 void Disseminate::removeWindow()
 {
     const auto& items = ui->windowList->selectedItems();
     for (auto& item : items) {
-        capture::removeWindow(static_cast<Item*>(item)->wid);
+        capture::removeWindow(static_cast<WindowItem*>(item)->wid);
         delete item;
     }
 }
@@ -74,6 +78,7 @@ void Disseminate::addKey()
 {
     KeyInput readKey(this);
     if (readKey.valid()) {
+        connect(&readKey, &KeyInput::keyAdded, this, &Disseminate::keyAdded);
         readKey.exec();
     } else {
         QMessageBox::critical(this, "Unable to capture", "Unable to capture, ensure that the app is allowed to control your computer");
@@ -82,4 +87,33 @@ void Disseminate::addKey()
 
 void Disseminate::removeKey()
 {
+    const auto& items = ui->keyList->selectedItems();
+    for (auto& item : items) {
+        const KeyItem* kitem = static_cast<const KeyItem*>(item);
+        capture::removeKey(kitem->key, kitem->mask);
+        delete item;
+    }
+}
+
+void Disseminate::keyAdded(int64_t key, uint64_t mask)
+{
+    QString name = QString::number(key) + " (" + QString::number(mask) + ")";
+    if (ui->keyList->findItems(name, Qt::MatchFixedString).isEmpty()) {
+        ui->keyList->addItem(new KeyItem(name, key, mask));
+        capture::addKey(key, mask);
+    }
+}
+
+void Disseminate::whiteListChanged()
+{
+    if (ui->whitelistRadio->isChecked()) {
+        capture::setKeyType(capture::WhiteList);
+    }
+}
+
+void Disseminate::blackListChanged()
+{
+    if (ui->blacklistRadio->isChecked()) {
+        capture::setKeyType(capture::BlackList);
+    }
 }

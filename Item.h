@@ -3,17 +3,29 @@
 
 #include <QListWidgetItem>
 
-class Item : public QListWidgetItem
+class WindowItem : public QListWidgetItem
 {
 public:
-    Item(const QString &text, uint64_t windowId);
+    WindowItem(const QString &text, uint64_t windowId);
 
     uint64_t wid;
 };
 
-inline Item::Item(const QString& text, uint64_t windowId)
+inline WindowItem::WindowItem(const QString& text, uint64_t windowId)
     : QListWidgetItem(text), wid(windowId)
 {
 }
+
+class KeyItem : public QListWidgetItem
+{
+public:
+    KeyItem(const QString& text, int64_t k, uint64_t m)
+        : QListWidgetItem(text), key(k), mask(m)
+    {
+    }
+
+    int64_t key;
+    uint64_t mask;
+};
 
 #endif

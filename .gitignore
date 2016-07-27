@@ -1,0 +1,9 @@
+.DS_Store
+.qmake*
+*.o
+Makefile
+*.json
+disseminate.app/*
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
