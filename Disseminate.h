@@ -18,7 +18,15 @@ public:
 
 private slots:
     void addWindow();
+    void removeWindow();
+
     void windowSelected(const QString& name, uint64_t window);
+
+    void startBroadcast();
+    void stopBroadcast();
+
+    void addKey();
+    void removeKey();
 
 private:
     Ui::Disseminate *ui;

@@ -26,10 +26,12 @@ void WindowSelector::init()
     std::vector<WindowInfo> infos;
     getWindows(infos);
 
+    ui->windowListWidget->clear();
+
     QListWidget* list = ui->windowListWidget;
     for (const auto& info : infos) {
-        QString str = toQString(info.name) + " (" + QString::number(info.windowId) + ")";
-        list->addItem(new Item(str, info.windowId));
+        QString str = toQString(info.name) + " (" + QString::number(info.psn) + ")";
+        list->addItem(new Item(str, info.psn));
     }
 }
 

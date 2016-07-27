@@ -39,7 +39,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
-          <widget class="QPushButton" name="addKeyButton">
+          <widget class="QPushButton" name="addKey">
            <property name="text">
             <string>Add Key</string>
            </property>
