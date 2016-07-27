@@ -29,7 +29,8 @@ HEADERS  += Disseminate.h \
     WindowSelector.h \
     WindowSelectorOSX.h \
     KeyInput.h \
-    Preferences.h
+    Preferences.h \
+    Helpers.h
 
 FORMS    += Disseminate.ui \
     WindowSelector.ui \

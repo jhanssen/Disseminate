@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 
 namespace capture {
 void addWindow(uint64_t window);
@@ -20,6 +21,9 @@ void stop();
 
 bool startReadKey(const std::function<void(int64_t, uint64_t)>& func);
 void stopReadKey();
+
+std::string keyToString(int64_t key);
+std::string maskToString(uint64_t mask);
 };
 
 #endif

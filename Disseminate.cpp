@@ -127,7 +127,7 @@ void Disseminate::removeKey()
 
 void Disseminate::keyAdded(int64_t key, uint64_t mask)
 {
-    QString name = QString::number(key) + " (" + QString::number(mask) + ")";
+    const QString name = helpers::keyToQString(key, mask);
     if (!helpers::contains(ui->keyList, name)) {
         ui->keyList->addItem(new KeyItem(name, key, mask));
         capture::addKey(key, mask);
@@ -188,7 +188,7 @@ void Disseminate::loadConfig()
             const uint64_t m = key["mask"].toULongLong();
 
             if (k || m) {
-                QString name = QString::number(k) + " (" + QString::number(m) + ")";
+                const QString name = helpers::keyToQString(k, m);
                 if (!helpers::contains(ui->keyList, name)) {
                     ui->keyList->addItem(new KeyItem(name, k, m));
                     capture::addKey(k, m);

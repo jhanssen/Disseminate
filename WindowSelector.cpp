@@ -1,12 +1,8 @@
 #include "WindowSelector.h"
 #include "WindowSelectorOSX.h"
 #include "Item.h"
+#include "Helpers.h"
 #include "ui_WindowSelector.h"
-
-static QString toQString(const std::string& str)
-{
-    return QString::fromUtf8(str.c_str(), str.size());
-}
 
 WindowSelector::WindowSelector(QWidget *parent) :
     QDialog(parent),
@@ -30,8 +26,8 @@ void WindowSelector::init()
 
     QListWidget* list = ui->windowListWidget;
     for (const auto& info : infos) {
-        const QString str = toQString(info.name) + " (" + QString::number(info.psn) + ")";
-        list->addItem(new WindowItem(str, toQString(info.name), info.psn));
+        const QString str = helpers::toQString(info.name) + " (" + QString::number(info.psn) + ")";
+        list->addItem(new WindowItem(str, helpers::toQString(info.name), info.psn));
     }
 }
 
@@ -51,7 +47,7 @@ QList<WindowSelector::Window> WindowSelector::getWindowList()
 
     QList<Window> ret;
     for (const auto& info : infos) {
-        const Window win = { toQString(info.name), info.psn };
+        const Window win = { helpers::toQString(info.name), info.psn };
         ret.append(win);
     }
 

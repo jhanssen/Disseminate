@@ -1,4 +1,5 @@
 #include "KeyInput.h"
+#include "Helpers.h"
 #include "Utils.h"
 #include "ui_KeyInput.h"
 
@@ -30,7 +31,7 @@ void KeyInput::emitKeyAdded()
 
 void KeyInput::updateKey()
 {
-    ui->keyEdit->setText(QString::number(currentKey) + " (" + QString::number(currentFlags) + ")");
+    ui->keyEdit->setText(helpers::keyToQString(currentKey, currentFlags));
 }
 
 void KeyInput::keyPressEvent(QKeyEvent*)
