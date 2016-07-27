@@ -33,13 +33,6 @@ struct WindowData
     uint64_t order;
 };
 
-NSString *kAppNameKey = @"applicationName";	// Application Name & PID
-NSString *kWindowOriginKey = @"windowOrigin";	// Window Origin as a string
-NSString *kWindowSizeKey = @"windowSize";		// Window Size as a string
-NSString *kWindowIDKey = @"windowID";			// Window ID
-NSString *kWindowLevelKey = @"windowLevel";	// Window Level
-NSString *kWindowOrderKey = @"windowOrder";	// The overall front-to-back ordering of the windows as returned by the window server
-
 void WindowListApplierFunction(const void *inputDictionary, void *context)
 {
     ScopedPool pool;
