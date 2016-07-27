@@ -9,6 +9,6 @@ sips -z 256 256   orange-keyboard-512.png --out AppIcon.iconset/icon_128x128@2x.
 sips -z 256 256   orange-keyboard-512.png --out AppIcon.iconset/icon_256x256.png
 sips -z 512 512   orange-keyboard-512.png --out AppIcon.iconset/icon_256x256@2x.png
 sips -z 512 512   orange-keyboard-512.png --out AppIcon.iconset/icon_512x512.png
-cp orange-keyboard-512.png AppIcon.iconset/icon_512x512@2x.png
+sips -z 1024 1024 orange-keyboard-512.png --out AppIcon.iconset/icon_512x512@2x.png
 iconutil -c icns AppIcon.iconset
 rm -R AppIcon.iconset
