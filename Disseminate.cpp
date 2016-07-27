@@ -81,7 +81,7 @@ void Disseminate::startBroadcast()
     if (broadcasting)
         return;
     if (ui->windowList->count() < 2) {
-        QMessageBox::information(this, "No windows to broadcast", "Add at least two windows to broadcast before capturing");
+        QMessageBox::information(this, "No windows to broadcast", "Add at least two windows before broadcasting");
         return;
     }
     if (!broadcast::start()) {
