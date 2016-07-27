@@ -4,10 +4,14 @@
 #include <QDialog>
 #include <QList>
 #include <QString>
+#include <QListWidgetItem>
+#include <QVBoxLayout>
 
 namespace Ui {
 class WindowSelector;
 }
+
+class ScreenShotWidget;
 
 class WindowSelector : public QDialog
 {
@@ -22,24 +26,27 @@ public:
     struct Window
     {
         QString name;
-        uint64_t id;
+        uint64_t psn, winid;
         QPixmap icon;
 
         bool operator==(const Window& other) const
         {
-            return name == other.name && id == other.id;
+            return name == other.name && psn == other.psn;
         }
     };
     static QList<Window> getWindowList();
 
 signals:
-    void windowSelected(const QString& name, uint64_t id, const QPixmap& image);
+    void windowSelected(const QString& name, uint64_t psn, uint64_t id, const QPixmap& image);
 
 private slots:
     void emitSelected();
+    void itemChanged(const QListWidgetItem* item);
 
 private:
     Ui::WindowSelector *ui;
+    ScreenShotWidget* screenShot;
+    QVBoxLayout* screenShotLayout;
 };
 
 #endif // WINDOWSELECTOR_H

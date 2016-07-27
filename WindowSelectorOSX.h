@@ -24,5 +24,6 @@ struct WindowInfo
 };
 
 void getWindows(std::vector<WindowInfo>& windows);
+QPixmap getScreenshot(uint64_t windowId);
 
 #endif

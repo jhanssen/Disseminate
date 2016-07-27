@@ -21,7 +21,7 @@ private slots:
     void addWindow();
     void removeWindow();
 
-    void windowSelected(const QString& name, uint64_t window, const QPixmap& image);
+    void windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image);
     void keyAdded(int64_t key, uint64_t mask);
     void preferencesChanged(const Preferences::Config& cfg);
 

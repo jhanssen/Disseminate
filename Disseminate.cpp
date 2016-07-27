@@ -54,12 +54,12 @@ void Disseminate::addWindow()
     selector->exec();
 }
 
-void Disseminate::windowSelected(const QString& name, uint64_t window, const QPixmap& image)
+void Disseminate::windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image)
 {
     if (!helpers::contains(ui->windowList, name)) {
-        const QString str = name + " (" + QString::number(window) + ")";
-        ui->windowList->addItem(new WindowItem(str, name, window, image));
-        capture::addWindow(window);
+        const QString str = name + " (" + QString::number(psn) + ")";
+        ui->windowList->addItem(new WindowItem(str, name, psn, winid, image));
+        capture::addWindow(psn);
     }
 }
 
@@ -70,7 +70,7 @@ void Disseminate::removeWindow()
 
     const auto& items = ui->windowList->selectedItems();
     for (auto& item : items) {
-        capture::removeWindow(static_cast<WindowItem*>(item)->wid);
+        capture::removeWindow(static_cast<WindowItem*>(item)->wpsn);
         delete item;
     }
 }
@@ -251,16 +251,16 @@ void Disseminate::reloadWindows()
     const int windowCount = ui->windowList->count();
     for (int i = 0; i < windowCount; ++i) {
         WindowItem* item = static_cast<WindowItem*>(ui->windowList->item(i));
-        current.append({ item->wname, item->wid, item->wicon });
+        current.append({ item->wname, item->wpsn, item->wid, item->wicon });
     }
     ui->windowList->clear();
 
     // readd existing windows
     for (const auto& c : current) {
         if (windows.contains(c)) {
-            const QString str = c.name + " (" + QString::number(c.id) + ")";
-            ui->windowList->addItem(new WindowItem(str, c.name, c.id, c.icon));
-            capture::addWindow(c.id);
+            const QString str = c.name + " (" + QString::number(c.psn) + ")";
+            ui->windowList->addItem(new WindowItem(str, c.name, c.psn, c.winid, c.icon));
+            capture::addWindow(c.psn);
         }
     }
     // then readd automatic windows
@@ -269,10 +269,10 @@ void Disseminate::reloadWindows()
         QRegExp rx(str, Qt::CaseInsensitive);
         for (const auto& win : autoWindows) {
             if (rx.indexIn(win.name) != -1) {
-                const QString str = win.name + " (" + QString::number(win.id) + ")";
+                const QString str = win.name + " (" + QString::number(win.psn) + ")";
                 if (!helpers::contains(ui->windowList, str)) {
-                    ui->windowList->addItem(new WindowItem(str, win.name, win.id, win.icon));
-                    capture::addWindow(win.id);
+                    ui->windowList->addItem(new WindowItem(str, win.name, win.psn, win.winid, win.icon));
+                    capture::addWindow(win.psn);
                 }
             }
         }

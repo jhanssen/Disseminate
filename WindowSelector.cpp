@@ -3,6 +3,45 @@
 #include "Item.h"
 #include "Helpers.h"
 #include "ui_WindowSelector.h"
+#include <QPainter>
+
+class ScreenShotWidget : public QWidget
+{
+public:
+    ScreenShotWidget(QWidget* p)
+        : QWidget(p)
+    {
+        setMinimumSize(100, 100);
+        setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    }
+
+    void setPixmap(const QPixmap& pm)
+    {
+        pixmap = pm;
+    }
+
+protected:
+    void paintEvent(QPaintEvent*)
+    {
+        QPainter painter(this);
+        if (!pixmap.isNull()) {
+            QRect wr = rect();
+            const double fracx = static_cast<double>(wr.width()) / pixmap.width();
+            const double fracy = static_cast<double>(wr.height()) / pixmap.height();
+            if (fracx < fracy) {
+                // ratio for width
+                wr.setHeight(pixmap.height() * fracx);
+            } else {
+                // ratio for height
+                wr.setWidth(pixmap.width() * fracy);
+            }
+            painter.drawPixmap(wr, pixmap);
+        }
+    }
+
+private:
+    QPixmap pixmap;
+};
 
 WindowSelector::WindowSelector(QWidget *parent) :
     QDialog(parent),
@@ -10,10 +49,18 @@ WindowSelector::WindowSelector(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this, &WindowSelector::accepted, this, &WindowSelector::emitSelected);
+    connect(ui->windowListWidget, &QListWidget::currentItemChanged, this, &WindowSelector::itemChanged);
+
+    screenShot = new ScreenShotWidget(ui->imageWidget);
+    screenShotLayout = new QVBoxLayout(ui->imageWidget);
+    screenShotLayout->addWidget(screenShot);
+    screenShot->show();
 }
 
 WindowSelector::~WindowSelector()
 {
+    delete screenShot;
+    delete screenShotLayout;
     delete ui;
 }
 
@@ -27,7 +74,7 @@ void WindowSelector::init()
     QListWidget* list = ui->windowListWidget;
     for (const auto& info : infos) {
         const QString str = helpers::toQString(info.name) + " (" + QString::number(info.psn) + ")";
-        list->addItem(new WindowItem(str, helpers::toQString(info.name), info.psn, info.image));
+        list->addItem(new WindowItem(str, helpers::toQString(info.name), info.psn, info.windowId, info.image));
     }
 }
 
@@ -36,7 +83,7 @@ void WindowSelector::emitSelected()
     const auto& items = ui->windowListWidget->selectedItems();
     if (items.size() == 1) {
         const WindowItem* item = static_cast<WindowItem*>(items.first());
-        emit windowSelected(item->wname, item->wid, item->wicon);
+        emit windowSelected(item->wname, item->wpsn, item->wid, item->wicon);
     }
 }
 
@@ -47,9 +94,21 @@ QList<WindowSelector::Window> WindowSelector::getWindowList()
 
     QList<Window> ret;
     for (const auto& info : infos) {
-        const Window win = { helpers::toQString(info.name), info.psn, info.image };
+        const Window win = { helpers::toQString(info.name), info.psn, info.windowId, info.image };
         ret.append(win);
     }
 
     return ret;
+}
+
+void WindowSelector::itemChanged(const QListWidgetItem* item)
+{
+    if (!item) {
+        screenShot->setPixmap(QPixmap());
+    } else {
+        const WindowItem* witem = static_cast<const WindowItem*>(item);
+        const QPixmap shot = getScreenshot(witem->wid);
+        screenShot->setPixmap(shot);
+        screenShot->update();
+    }
 }

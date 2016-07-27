@@ -7,18 +7,18 @@
 class WindowItem : public QListWidgetItem
 {
 public:
-    WindowItem(const QString &text, const QString& name, uint64_t windowId, const QPixmap& icon);
+    WindowItem(const QString &text, const QString& name, uint64_t psn, uint64_t winid, const QPixmap& icon);
 
     QString wname;
+    uint64_t wpsn;
     uint64_t wid;
     QPixmap wicon;
 };
 
-inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t windowId, const QPixmap& icon)
-    : QListWidgetItem(text), wname(name), wid(windowId), wicon(icon)
+inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t psn, uint64_t winid, const QPixmap& icon)
+    : QListWidgetItem(text), wname(name), wpsn(psn), wid(winid), wicon(icon)
 {
     if (!wicon.isNull()) {
-        printf("got icon in item\n");
         setIcon(wicon);
     }
 }
