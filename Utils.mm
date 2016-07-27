@@ -116,8 +116,8 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
 
         for (auto& source : windows.sources) {
             if (!equalsPsn(local->psn, source.psn)) {
-                CGEventRef copy = CGEventCreateCopy(event);
-                CGEventPostToPSN(&source.psn, copy);
+                //CGEventRef copy = CGEventCreateCopy(event);
+                CGEventPostToPSN(&source.psn, event);
             }
         }
     }

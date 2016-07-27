@@ -5,7 +5,7 @@
 KeyInput::KeyInput(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::KeyInput),
-    currentKey(0)
+    currentKey(0), currentFlags(0)
 {
     ui->setupUi(this);
     connect(this, &KeyInput::accepted, this, &KeyInput::emitKeyAdded);
@@ -24,7 +24,7 @@ KeyInput::~KeyInput()
 
 void KeyInput::emitKeyAdded()
 {
-    if (currentKey)
+    if (currentKey || currentFlags)
         emit keyAdded(currentKey, currentFlags);
 }
 
