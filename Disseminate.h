@@ -35,6 +35,9 @@ private slots:
     void preferences();
 
 private:
+    void reloadConfig();
+
+private:
     Ui::Disseminate *ui;
     WindowSelector* selector;
 };

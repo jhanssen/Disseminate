@@ -20,18 +20,21 @@ SOURCES += main.cpp\
     Utils.mm \
     WindowSelector.cpp \
     WindowSelectorOSX.mm \
-    KeyInput.cpp
+    KeyInput.cpp \
+    Preferences.cpp
 
 HEADERS  += Disseminate.h \
     Item.h \
     Utils.h \
     WindowSelector.h \
     WindowSelectorOSX.h \
-    KeyInput.h
+    KeyInput.h \
+    Preferences.h
 
 FORMS    += Disseminate.ui \
     WindowSelector.ui \
-    KeyInput.ui
+    KeyInput.ui \
+    Preferences.ui
 
 RESOURCES += \
     icons.qrc

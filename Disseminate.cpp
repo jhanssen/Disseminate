@@ -2,6 +2,7 @@
 #include "KeyInput.h"
 #include "Item.h"
 #include "Utils.h"
+#include "Preferences.h"
 #include "ui_Disseminate.h"
 #include <QMessageBox>
 
@@ -24,6 +25,8 @@ Disseminate::Disseminate(QWidget *parent) :
 
     connect(ui->whitelistRadio, &QRadioButton::toggled, this, &Disseminate::whiteListChanged);
     connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
+
+    reloadConfig();
 }
 
 Disseminate::~Disseminate()
@@ -122,5 +125,12 @@ void Disseminate::blackListChanged()
 
 void Disseminate::preferences()
 {
-#warning preferences, but I cant remember what to put here
+    Preferences preferences(this);
+    preferences.exec();
+
+    reloadConfig();
+}
+
+void Disseminate::reloadConfig()
+{
 }
