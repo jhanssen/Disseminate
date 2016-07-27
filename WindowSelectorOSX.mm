@@ -1,5 +1,16 @@
 #include "WindowSelectorOSX.h"
 #import <Cocoa/Cocoa.h>
+#include <QtMac>
+
+class ScopedPool
+{
+public:
+    ScopedPool() { mPool = [[NSAutoreleasePool alloc] init]; }
+    ~ScopedPool() { [mPool drain]; }
+
+private:
+    NSAutoreleasePool* mPool;
+};
 
 static std::string toStdString(NSString* str)
 {
@@ -31,6 +42,8 @@ NSString *kWindowOrderKey = @"windowOrder";	// The overall front-to-back orderin
 
 void WindowListApplierFunction(const void *inputDictionary, void *context)
 {
+    ScopedPool pool;
+
     NSDictionary *entry = (__bridge NSDictionary*)inputDictionary;
     WindowData* data = (__bridge WindowData*)context;
     WindowInfo info;
@@ -73,6 +86,16 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
                 info.level = [entry[(id)kCGWindowLayer] integerValue];
                 info.order = data->order;
                 ++data->order;
+
+                // Grab the Window icon.
+                NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier:info.pid];
+                NSImage* icon = [app icon];
+                if (icon) {
+                    NSRect iconRect = NSMakeRect(0, 0, icon.size.width, icon.size.height);
+                    CGImageRef cgIcon = [icon CGImageForProposedRect:&iconRect context:NULL hints:nil];
+                    info.image = QtMac::fromCGImageRef(cgIcon);
+                }
+
                 data->info.push_back(info);
         }
 }

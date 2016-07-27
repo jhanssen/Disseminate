@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui macextras
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,7 +13,11 @@ TEMPLATE = app
 
 ICON = icons/AppIcon.icns
 
-CONFIG += c++11 debug
+CONFIG += c++11
+
+#CONFIG += debug
+#QMAKE_CXXFLAGS += -fsanitize=address
+#QMAKE_LFLAGS += -fsanitize=address
 
 SOURCES += main.cpp\
     Disseminate.cpp \

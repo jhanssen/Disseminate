@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <QPixmap>
 
 struct WindowRect
 {
@@ -19,6 +20,7 @@ struct WindowInfo
     uint64_t level;
     uint64_t order;
     uint64_t psn;
+    QPixmap image;
 };
 
 void getWindows(std::vector<WindowInfo>& windows);

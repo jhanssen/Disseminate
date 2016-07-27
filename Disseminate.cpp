@@ -54,11 +54,11 @@ void Disseminate::addWindow()
     selector->exec();
 }
 
-void Disseminate::windowSelected(const QString& name, uint64_t window)
+void Disseminate::windowSelected(const QString& name, uint64_t window, const QPixmap& image)
 {
     if (!helpers::contains(ui->windowList, name)) {
         const QString str = name + " (" + QString::number(window) + ")";
-        ui->windowList->addItem(new WindowItem(str, name, window));
+        ui->windowList->addItem(new WindowItem(str, name, window, image));
         capture::addWindow(window);
     }
 }
@@ -251,7 +251,7 @@ void Disseminate::reloadWindows()
     const int windowCount = ui->windowList->count();
     for (int i = 0; i < windowCount; ++i) {
         WindowItem* item = static_cast<WindowItem*>(ui->windowList->item(i));
-        current.append({ item->wname, item->wid });
+        current.append({ item->wname, item->wid, item->wicon });
     }
     ui->windowList->clear();
 
@@ -259,7 +259,7 @@ void Disseminate::reloadWindows()
     for (const auto& c : current) {
         if (windows.contains(c)) {
             const QString str = c.name + " (" + QString::number(c.id) + ")";
-            ui->windowList->addItem(new WindowItem(str, c.name, c.id));
+            ui->windowList->addItem(new WindowItem(str, c.name, c.id, c.icon));
             capture::addWindow(c.id);
         }
     }
@@ -271,7 +271,7 @@ void Disseminate::reloadWindows()
             if (rx.indexIn(win.name) != -1) {
                 const QString str = win.name + " (" + QString::number(win.id) + ")";
                 if (!helpers::contains(ui->windowList, str)) {
-                    ui->windowList->addItem(new WindowItem(str, win.name, win.id));
+                    ui->windowList->addItem(new WindowItem(str, win.name, win.id, win.icon));
                     capture::addWindow(win.id);
                 }
             }

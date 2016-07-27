@@ -23,6 +23,7 @@ public:
     {
         QString name;
         uint64_t id;
+        QPixmap icon;
 
         bool operator==(const Window& other) const
         {
@@ -32,7 +33,7 @@ public:
     static QList<Window> getWindowList();
 
 signals:
-    void windowSelected(const QString& name, uint64_t id);
+    void windowSelected(const QString& name, uint64_t id, const QPixmap& image);
 
 private slots:
     void emitSelected();

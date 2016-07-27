@@ -2,19 +2,25 @@
 #define ITEM_H
 
 #include <QListWidgetItem>
+#include <QPixmap>
 
 class WindowItem : public QListWidgetItem
 {
 public:
-    WindowItem(const QString &text, const QString& name, uint64_t windowId);
+    WindowItem(const QString &text, const QString& name, uint64_t windowId, const QPixmap& icon);
 
     QString wname;
     uint64_t wid;
+    QPixmap wicon;
 };
 
-inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t windowId)
-    : QListWidgetItem(text), wname(name), wid(windowId)
+inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t windowId, const QPixmap& icon)
+    : QListWidgetItem(text), wname(name), wid(windowId), wicon(icon)
 {
+    if (!wicon.isNull()) {
+        printf("got icon in item\n");
+        setIcon(wicon);
+    }
 }
 
 class KeyItem : public QListWidgetItem
