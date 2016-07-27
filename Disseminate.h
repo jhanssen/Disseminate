@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include "WindowSelector.h"
+#include "Preferences.h"
 
 namespace Ui {
 class Disseminate;
@@ -22,6 +23,7 @@ private slots:
 
     void windowSelected(const QString& name, uint64_t window);
     void keyAdded(int64_t key, uint64_t mask);
+    void preferencesChanged(const Preferences::Config& cfg);
 
     void startBroadcast();
     void stopBroadcast();
@@ -34,12 +36,19 @@ private slots:
 
     void preferences();
 
+    void reloadWindows();
+
 private:
-    void reloadConfig();
+    void saveConfig();
+    void loadConfig();
+    void applyConfig();
 
 private:
     Ui::Disseminate *ui;
     WindowSelector* selector;
+    bool capturing;
+
+    Preferences::Config prefs;
 };
 
 #endif // DISSEMINATE_H

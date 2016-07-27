@@ -20,9 +20,16 @@
       <property name="title">
        <string>Windows</string>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
         <widget class="QListWidget" name="windowList"/>
+       </item>
+       <item>
+        <widget class="QPushButton" name="reloadWindows">
+         <property name="text">
+          <string>Reload Windows</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

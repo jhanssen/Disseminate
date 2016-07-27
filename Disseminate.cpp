@@ -3,13 +3,16 @@
 #include "Item.h"
 #include "Utils.h"
 #include "Preferences.h"
+#include "Helpers.h"
 #include "ui_Disseminate.h"
 #include <QMessageBox>
+#include <QSettings>
 
 Disseminate::Disseminate(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Disseminate),
-    selector(0)
+    selector(0),
+    capturing(false)
 {
     ui->setupUi(this);
 
@@ -26,7 +29,10 @@ Disseminate::Disseminate(QWidget *parent) :
     connect(ui->whitelistRadio, &QRadioButton::toggled, this, &Disseminate::whiteListChanged);
     connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
 
-    reloadConfig();
+    connect(ui->reloadWindows, &QPushButton::clicked, this, &Disseminate::reloadWindows);
+
+    loadConfig();
+    applyConfig();
 }
 
 Disseminate::~Disseminate()
@@ -37,6 +43,9 @@ Disseminate::~Disseminate()
 
 void Disseminate::addWindow()
 {
+    if (capturing)
+        stopBroadcast();
+
     if (!selector) {
         selector = new WindowSelector(this);
         connect(selector, &WindowSelector::windowSelected, this, &Disseminate::windowSelected);
@@ -47,14 +56,18 @@ void Disseminate::addWindow()
 
 void Disseminate::windowSelected(const QString& name, uint64_t window)
 {
-    if (ui->windowList->findItems(name, Qt::MatchFixedString).isEmpty()) {
-        ui->windowList->addItem(new WindowItem(name, window));
+    if (!helpers::contains(ui->windowList, name)) {
+        const QString str = name + " (" + QString::number(window) + ")";
+        ui->windowList->addItem(new WindowItem(str, name, window));
         capture::addWindow(window);
     }
 }
 
 void Disseminate::removeWindow()
 {
+    if (capturing)
+        stopBroadcast();
+
     const auto& items = ui->windowList->selectedItems();
     for (auto& item : items) {
         capture::removeWindow(static_cast<WindowItem*>(item)->wid);
@@ -64,19 +77,25 @@ void Disseminate::removeWindow()
 
 void Disseminate::startBroadcast()
 {
+    if (capturing)
+        return;
     if (!capture::start()) {
         QMessageBox::critical(this, "Unable to capture", "Unable to capture, ensure that the app is allowed to control your computer");
         return;
     }
+    capturing = true;
     ui->actionStart->setEnabled(false);
     ui->actionStop->setEnabled(true);
 }
 
 void Disseminate::stopBroadcast()
 {
+    if (!capturing)
+        return;
     ui->actionStart->setEnabled(true);
     ui->actionStop->setEnabled(false);
     capture::stop();
+    capturing = false;
 }
 
 void Disseminate::addKey()
@@ -103,7 +122,7 @@ void Disseminate::removeKey()
 void Disseminate::keyAdded(int64_t key, uint64_t mask)
 {
     QString name = QString::number(key) + " (" + QString::number(mask) + ")";
-    if (ui->keyList->findItems(name, Qt::MatchFixedString).isEmpty()) {
+    if (!helpers::contains(ui->keyList, name)) {
         ui->keyList->addItem(new KeyItem(name, key, mask));
         capture::addKey(key, mask);
     }
@@ -125,12 +144,83 @@ void Disseminate::blackListChanged()
 
 void Disseminate::preferences()
 {
-    Preferences preferences(this);
-    preferences.exec();
+    Preferences preferences(this, prefs);
+    connect(&preferences, &Preferences::configChanged, this, &Disseminate::preferencesChanged);
 
-    reloadConfig();
+    preferences.exec();
 }
 
-void Disseminate::reloadConfig()
+void Disseminate::preferencesChanged(const Preferences::Config& cfg)
 {
+    prefs = cfg;
+    saveConfig();
+    applyConfig();
+}
+
+void Disseminate::loadConfig()
+{
+    QSettings settings("jhanssen", "Disseminate");
+    QVariant windows = settings.value("preferences/automaticWindows");
+    prefs.automaticWindows.clear();
+    QStringList list = windows.toStringList();
+    for (const auto& str : list) {
+        prefs.automaticWindows.append(str);
+    }
+}
+
+void Disseminate::saveConfig()
+{
+    QSettings settings("jhanssen", "Disseminate");
+    settings.setValue("preferences/automaticWindows", prefs.automaticWindows);
+}
+
+void Disseminate::applyConfig()
+{
+    if (capturing)
+        stopBroadcast();
+    const QList<WindowSelector::Window> windows = WindowSelector::getWindowList();
+    for (const auto& str : prefs.automaticWindows) {
+        QRegExp rx(str, Qt::CaseInsensitive);
+        for (const auto& win : windows) {
+            if (rx.indexIn(win.name) != -1) {
+                const QString str = win.name + " (" + QString::number(win.id) + ")";
+                if (!helpers::contains(ui->windowList, str)) {
+                    ui->windowList->addItem(new WindowItem(str, win.name, win.id));
+                    capture::addWindow(win.id);
+                }
+            }
+        }
+    }
+}
+
+void Disseminate::reloadWindows()
+{
+    const bool cap = capturing;
+    if (cap)
+        stopBroadcast();
+
+    const QList<WindowSelector::Window> windows = WindowSelector::getWindowList();
+    capture::clearWindows();
+
+    QList<WindowSelector::Window> current;
+    const int windowCount = ui->windowList->count();
+    for (int i = 0; i < windowCount; ++i) {
+        WindowItem* item = static_cast<WindowItem*>(ui->windowList->item(i));
+        current.append({ item->wname, item->wid });
+    }
+    ui->windowList->clear();
+
+    // readd existing windows
+    for (const auto& c : current) {
+        if (windows.contains(c)) {
+            const QString str = c.name + " (" + QString::number(c.id) + ")";
+            ui->windowList->addItem(new WindowItem(str, c.name, c.id));
+            capture::addWindow(c.id);
+        }
+    }
+    // then readd automatic windows
+    applyConfig();
+
+    if (cap)
+        startBroadcast();
 }

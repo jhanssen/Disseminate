@@ -7,6 +7,7 @@
 namespace capture {
 void addWindow(uint64_t window);
 void removeWindow(uint64_t window);
+void clearWindows();
 
 enum KeyType { WhiteList, BlackList };
 void setKeyType(KeyType type);

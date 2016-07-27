@@ -6,13 +6,14 @@
 class WindowItem : public QListWidgetItem
 {
 public:
-    WindowItem(const QString &text, uint64_t windowId);
+    WindowItem(const QString &text, const QString& name, uint64_t windowId);
 
+    QString wname;
     uint64_t wid;
 };
 
-inline WindowItem::WindowItem(const QString& text, uint64_t windowId)
-    : QListWidgetItem(text), wid(windowId)
+inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t windowId)
+    : QListWidgetItem(text), wname(name), wid(windowId)
 {
 }
 

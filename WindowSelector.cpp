@@ -30,8 +30,8 @@ void WindowSelector::init()
 
     QListWidget* list = ui->windowListWidget;
     for (const auto& info : infos) {
-        QString str = toQString(info.name) + " (" + QString::number(info.psn) + ")";
-        list->addItem(new WindowItem(str, info.psn));
+        const QString str = toQString(info.name) + " (" + QString::number(info.psn) + ")";
+        list->addItem(new WindowItem(str, toQString(info.name), info.psn));
     }
 }
 
@@ -40,6 +40,20 @@ void WindowSelector::emitSelected()
     const auto& items = ui->windowListWidget->selectedItems();
     if (items.size() == 1) {
         const WindowItem* item = static_cast<WindowItem*>(items.first());
-        emit windowSelected(item->text(), item->wid);
+        emit windowSelected(item->wname, item->wid);
     }
+}
+
+QList<WindowSelector::Window> WindowSelector::getWindowList()
+{
+    std::vector<WindowInfo> infos;
+    getWindows(infos);
+
+    QList<Window> ret;
+    for (const auto& info : infos) {
+        const Window win = { toQString(info.name), info.psn };
+        ret.append(win);
+    }
+
+    return ret;
 }

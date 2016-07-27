@@ -72,6 +72,12 @@ void capture::removeWindow(uint64_t window)
     }
 }
 
+void capture::clearWindows()
+{
+    assert(windows.sources.empty());
+    windows.psns.clear();
+}
+
 static ProcessSerialNumber activePSN()
 {
     NSWorkspace* workspace            = [NSWorkspace sharedWorkspace];
