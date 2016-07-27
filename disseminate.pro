@@ -11,10 +11,21 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = disseminate
 TEMPLATE = app
 
+CONFIG += c++11
 
 SOURCES += main.cpp\
-        Disseminate.cpp
+    Disseminate.cpp \
+    WindowSelector.cpp \
+    WindowSelectorOSX.mm
 
-HEADERS  += Disseminate.h
+HEADERS  += Disseminate.h \
+    WindowSelector.h \
+    WindowSelectorOSX.h
 
-FORMS    += Disseminate.ui
+FORMS    += Disseminate.ui \
+    WindowSelector.ui
+
+RESOURCES += \
+    icons.qrc
+
+LIBS += -framework Foundation -framework CoreFoundation -framework CoreGraphics
