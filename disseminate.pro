@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = disseminate
 TEMPLATE = app
 
+ICON = icons/AppIcon.icns
+
 CONFIG += c++11 debug
 
 SOURCES += main.cpp\
