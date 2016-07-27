@@ -227,10 +227,10 @@ void capture::addKey(int64_t key, uint64_t mask)
 void capture::removeKey(int64_t key, uint64_t mask)
 {
     auto it = keyList.keys.find(key);
-    assert(it == keyList.keys.end());
+    assert(it != keyList.keys.end());
     auto& vec = it->second;
     auto vit = std::find(vec.begin(), vec.end(), mask);
-    assert(vit == vec.end());
+    assert(vit != vec.end());
     vec.erase(vit);
     if (vec.empty())
         keyList.keys.erase(it);
