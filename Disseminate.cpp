@@ -80,8 +80,8 @@ void Disseminate::startBroadcast()
 {
     if (capturing)
         return;
-    if (!ui->windowList->count()) {
-        QMessageBox::information(this, "No windows to capture", "Add windows to capture before capturing");
+    if (ui->windowList->count() < 2) {
+        QMessageBox::information(this, "No windows to capture", "Add at least two windows to capture before capturing");
         return;
     }
     if (!capture::start()) {
