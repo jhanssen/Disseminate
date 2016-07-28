@@ -691,18 +691,8 @@ broadcast::Accessible broadcast::checkAllowsAccessibility()
 {
     if (AXIsProcessTrustedWithOptions != NULL) {
         // 10.9 and later
-        const void * keys[] = { kAXTrustedCheckOptionPrompt };
-        const void * values[] = { kCFBooleanTrue };
-
-        CFDictionaryRef options = CFDictionaryCreate(
-            kCFAllocatorDefault,
-            keys,
-            values,
-            sizeof(keys) / sizeof(*keys),
-            &kCFCopyStringDictionaryKeyCallBacks,
-            &kCFTypeDictionaryValueCallBacks);
-
-        if (AXIsProcessTrustedWithOptions(options))
+        NSDictionary *options = @{(id)kAXTrustedCheckOptionPrompt : @YES};
+        if (AXIsProcessTrustedWithOptions((CFDictionaryRef)options))
             return Allowed;
         else
             return Denied;
