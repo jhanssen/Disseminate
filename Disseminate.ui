@@ -175,7 +175,7 @@
   <action name="actionTemplates">
    <property name="icon">
     <iconset resource="icons.qrc">
-     <normaloff>:/icons/icons/ic_keyboard_black_48dp.png</normaloff>:/icons/icons/ic_keyboard_black_48dp.png</iconset>
+     <normaloff>:/icons/icons/ic_content_copy_black_48dp.png</normaloff>:/icons/icons/ic_content_copy_black_48dp.png</iconset>
    </property>
    <property name="text">
     <string>Templates</string>

@@ -6,5 +6,7 @@
         <file>icons/ic_stop_black_48dp.png</file>
         <file>icons/orange-keyboard-512.png</file>
         <file>icons/ic_keyboard_black_48dp.png</file>
+        <file>icons/ic_content_copy_black_48dp.png</file>
+        <file>icons/ic_mouse_black_48dp.png</file>
     </qresource>
 </RCC>
