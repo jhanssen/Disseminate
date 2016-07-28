@@ -188,7 +188,9 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
         const CGEventFlags flags = CGEventGetFlags(event);
 
         if (checkBinding(globalKey, virt, flags)) {
-            broadcastingKeys = !broadcastingKeys;
+            if (type == NX_KEYUP) {
+                broadcastingKeys = !broadcastingKeys;
+            }
             return 0;
         }
 
