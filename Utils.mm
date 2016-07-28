@@ -273,6 +273,7 @@ void broadcast::stop()
     for (auto& source : windows.sources) {
         CFRunLoopRemoveSource(runloop, source.source, kCFRunLoopCommonModes);
         CFRelease(source.source);
+        CFMachPortInvalidate(source.tap);
         CFRelease(source.tap);
     }
     windows.sources.clear();
