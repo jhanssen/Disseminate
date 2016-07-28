@@ -85,11 +85,11 @@ void Disseminate::addWindow()
 
 void Disseminate::windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image)
 {
-    if (!helpers::contains(ui->windowList, name)) {
+    const QString str = name + " (" + QString::number(psn) + ")";
+    if (!helpers::contains(ui->windowList, str)) {
         const bool bc = broadcasting;
         if (bc)
             stopBroadcast();
-        const QString str = name + " (" + QString::number(psn) + ")";
         ui->windowList->addItem(new WindowItem(str, name, psn, winid, image));
         broadcast::addWindow(psn);
         if (bc)
