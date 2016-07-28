@@ -28,6 +28,8 @@ WindowSelector::WindowSelector(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this, &WindowSelector::accepted, this, &WindowSelector::emitSelected);
+    connect(ui->windowListWidget, &QListWidget::itemDoubleClicked, this, &WindowSelector::accept);
+
     connect(ui->windowListWidget, &QListWidget::currentItemChanged, this, &WindowSelector::itemChanged);
 
     screenShot = new helpers::ScreenShotWidget(ui->imageWidget);
