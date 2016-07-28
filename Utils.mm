@@ -685,3 +685,23 @@ void broadcast::cleanup()
         logfile = 0;
     }
 }
+
+
+void broadcast::checkAllowsAccessibility()
+{
+    if (AXIsProcessTrustedWithOptions != NULL) {
+        // 10.9 and later
+        const void * keys[] = { kAXTrustedCheckOptionPrompt };
+        const void * values[] = { kCFBooleanTrue };
+
+        CFDictionaryRef options = CFDictionaryCreate(
+            kCFAllocatorDefault,
+            keys,
+            values,
+            sizeof(keys) / sizeof(*keys),
+            &kCFCopyStringDictionaryKeyCallBacks,
+            &kCFTypeDictionaryValueCallBacks);
+
+        AXIsProcessTrustedWithOptions(options);
+    }
+}

@@ -25,6 +25,7 @@
 #include "ui_Disseminate.h"
 #include <QMessageBox>
 #include <QSettings>
+#include <QTimer>
 
 Disseminate::Disseminate(QWidget *parent) :
     QMainWindow(parent),
@@ -55,6 +56,10 @@ Disseminate::Disseminate(QWidget *parent) :
     connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
 
     connect(ui->reloadWindows, &QPushButton::clicked, this, &Disseminate::reloadWindows);
+
+    QTimer::singleShot(50, []() {
+            broadcast::checkAllowsAccessibility();
+        });
 }
 
 Disseminate::~Disseminate()
