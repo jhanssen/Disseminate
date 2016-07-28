@@ -305,6 +305,7 @@ void broadcast::stopReadKey()
         CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
         CFRunLoopRemoveSource(runloop, readKey.source, kCFRunLoopCommonModes);
         CFRelease(readKey.source);
+        CFMachPortInvalidate(readKey.tap);
         CFRelease(readKey.tap);
         readKey = { nullptr, nullptr, nullptr };
     }
