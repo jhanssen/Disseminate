@@ -687,7 +687,7 @@ void broadcast::cleanup()
 }
 
 
-void broadcast::checkAllowsAccessibility()
+broadcast::Accessible broadcast::checkAllowsAccessibility()
 {
     if (AXIsProcessTrustedWithOptions != NULL) {
         // 10.9 and later
@@ -702,6 +702,10 @@ void broadcast::checkAllowsAccessibility()
             &kCFCopyStringDictionaryKeyCallBacks,
             &kCFTypeDictionaryValueCallBacks);
 
-        AXIsProcessTrustedWithOptions(options);
+        if (AXIsProcessTrustedWithOptions(options))
+            return Allowed;
+        else
+            return Denied;
     }
+    return Unknown;
 }

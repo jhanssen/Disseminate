@@ -57,8 +57,11 @@ Disseminate::Disseminate(QWidget *parent) :
 
     connect(ui->reloadWindows, &QPushButton::clicked, this, &Disseminate::reloadWindows);
 
-    QTimer::singleShot(50, []() {
-            broadcast::checkAllowsAccessibility();
+    QTimer::singleShot(50, [this]() {
+            if (broadcast::checkAllowsAccessibility() == broadcast::Unknown) {
+                QMessageBox::warning(this, "Accessibility permissions required",
+                                     "Disemminate requires accessibility permissions, you might need to enable this in system preferences");
+            }
         });
 }
 

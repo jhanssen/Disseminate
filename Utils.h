@@ -56,7 +56,8 @@ std::string maskToString(uint64_t mask);
 
 void cleanup();
 
-void checkAllowsAccessibility();
+enum Accessible { Allowed, Denied, Unknown };
+Accessible checkAllowsAccessibility();
 };
 
 #endif
