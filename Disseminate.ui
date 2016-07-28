@@ -137,6 +137,8 @@
    </attribute>
    <addaction name="actionStart"/>
    <addaction name="actionStop"/>
+   <addaction name="separator"/>
+   <addaction name="actionTemplates"/>
   </widget>
   <action name="actionStart">
    <property name="icon">
@@ -168,6 +170,15 @@
   <action name="actionPreferences">
    <property name="text">
     <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionTemplates">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/icons/ic_keyboard_black_48dp.png</normaloff>:/icons/icons/ic_keyboard_black_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Templates</string>
    </property>
   </action>
  </widget>

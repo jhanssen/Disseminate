@@ -20,7 +20,6 @@
 #include "KeyInput.h"
 #include "Item.h"
 #include "Utils.h"
-#include "Preferences.h"
 #include "Helpers.h"
 #include "ui_Disseminate.h"
 #include <QMessageBox>
@@ -42,6 +41,7 @@ Disseminate::Disseminate(QWidget *parent) :
 
     connect(ui->actionStart, &QAction::triggered, this, &Disseminate::startBroadcast);
     connect(ui->actionStop, &QAction::triggered, this, &Disseminate::stopBroadcast);
+    connect(ui->actionTemplates, &QAction::triggered, this, &Disseminate::templates);
 
     connect(ui->actionPreferences, &QAction::triggered, this, &Disseminate::preferences);
 
@@ -57,14 +57,12 @@ Disseminate::Disseminate(QWidget *parent) :
 Disseminate::~Disseminate()
 {
     broadcast::stop();
+    delete selector;
     delete ui;
 }
 
 void Disseminate::addWindow()
 {
-    if (broadcasting)
-        stopBroadcast();
-
     if (!selector) {
         selector = new WindowSelector(this);
         connect(selector, &WindowSelector::windowSelected, this, &Disseminate::windowSelected);
@@ -76,9 +74,14 @@ void Disseminate::addWindow()
 void Disseminate::windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image)
 {
     if (!helpers::contains(ui->windowList, name)) {
+        const bool bc = broadcasting;
+        if (bc)
+            stopBroadcast();
         const QString str = name + " (" + QString::number(psn) + ")";
         ui->windowList->addItem(new WindowItem(str, name, psn, winid, image));
         broadcast::addWindow(psn);
+        if (bc)
+            startBroadcast();
     }
 }
 
@@ -128,7 +131,7 @@ void Disseminate::addKey()
         connect(&readKey, &KeyInput::keyAdded, this, &Disseminate::keyAdded);
         readKey.exec();
     } else {
-        QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
+        QMessageBox::critical(this, "Unable to capture key", "Unable to capture key, ensure that the app is allowed to control your computer");
     }
 }
 
@@ -169,6 +172,21 @@ void Disseminate::blackListChanged()
         broadcast::setKeyType(broadcast::BlackList);
         saveConfig();
     }
+}
+
+void Disseminate::templates()
+{
+    Templates templates(this, temps);
+    connect(&templates, &Templates::configChanged, this, &Disseminate::templatesChanged);
+
+    templates.exec();
+}
+
+void Disseminate::templatesChanged(const Templates::Config& cfg)
+{
+    temps = cfg;
+    saveConfig();
+    applyConfig();
 }
 
 void Disseminate::preferences()
@@ -225,6 +243,32 @@ void Disseminate::loadConfig()
         ui->blacklistRadio->setChecked(true);
         broadcast::setKeyType(broadcast::BlackList);
     }
+
+    temps.clear();
+    const QVariantMap templates = settings.value("templates").toMap();
+    // uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+    QVariantMap::const_iterator it = templates.begin();
+    const QVariantMap::const_iterator end = templates.end();
+    while (it != end) {
+        const QVariantMap ventry = it.value().toMap();
+        if (ventry.contains("whitelist") && ventry.contains("keys")) {
+            Templates::ConfigItem titem;
+            const QList<QVariant> vkeys = ventry["keys"].toList();
+            QVector<QPair<int64_t, uint64_t> >& tkeys = titem.keys;
+            for (const auto& k : vkeys) {
+                const QVariantMap km = k.toMap();
+                if (km.contains("key") && km.contains("mask")) {
+                    QPair<int64_t, uint64_t> tkey;
+                    tkey.first = km["key"].toLongLong();
+                    tkey.second = km["mask"].toULongLong();
+                    tkeys.append(tkey);
+                }
+            }
+            titem.whitelist = ventry["whitelist"].toBool();
+            temps[it.key()] = titem;
+        }
+        ++it;
+    }
 }
 
 void Disseminate::saveConfig()
@@ -250,6 +294,27 @@ void Disseminate::saveConfig()
     } else {
         settings.setValue("keyType", "blacklist");
     }
+
+    QVariantMap templates;
+    {
+        Templates::Config::const_iterator it = temps.begin();
+        const Templates::Config::const_iterator end = temps.end();
+        while (it != end) {
+            QList<QVariant> tkeys;
+            for (const auto& k : it.value().keys) {
+                QVariantMap tkey;
+                tkey["key"] = k.first;
+                tkey["mask"] = k.second;
+                tkeys.append(tkey);
+            }
+            QVariantMap kentry;
+            kentry["whitelist"] = it.value().whitelist;
+            kentry["keys"] = tkeys;
+            templates[it.key()] = kentry;
+            ++it;
+        }
+    }
+    settings.setValue("templates", templates);
 }
 
 void Disseminate::applyConfig()

@@ -22,6 +22,7 @@
 #include <QMainWindow>
 #include "WindowSelector.h"
 #include "Preferences.h"
+#include "Templates.h"
 
 namespace Ui {
 class Disseminate;
@@ -42,6 +43,7 @@ private slots:
     void windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image);
     void keyAdded(int64_t key, uint64_t mask);
     void preferencesChanged(const Preferences::Config& cfg);
+    void templatesChanged(const Templates::Config& cfg);
 
     void startBroadcast();
     void stopBroadcast();
@@ -53,6 +55,7 @@ private slots:
     void blackListChanged();
 
     void preferences();
+    void templates();
 
     void reloadWindows();
 
@@ -67,6 +70,7 @@ private:
     bool broadcasting;
 
     Preferences::Config prefs;
+    Templates::Config temps;
 };
 
 #endif // DISSEMINATE_H
