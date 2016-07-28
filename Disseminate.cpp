@@ -375,6 +375,7 @@ void Disseminate::saveConfig()
 void Disseminate::applyConfig()
 {
     reloadWindows();
+    updateBindings();
 }
 
 void Disseminate::reloadWindows()
@@ -419,6 +420,24 @@ void Disseminate::reloadWindows()
 
     if (cap)
         startBroadcast();
+}
+
+void Disseminate::updateBindings()
+{
+    if (helpers::keyIsNull(prefs.globalKey))
+        broadcast::clearBinding(broadcast::Keyboard);
+    else
+        broadcast::setBinding(broadcast::Keyboard, prefs.globalKey.first, prefs.globalKey.second);
+
+    if (helpers::keyIsNull(prefs.globalMouse))
+        broadcast::clearBinding(broadcast::Mouse);
+    else
+        broadcast::setBinding(broadcast::Mouse, prefs.globalMouse.first, prefs.globalMouse.second);
+
+    broadcast::clearActiveWindowExclusions();
+    for (const auto& ex : prefs.exclusions) {
+        broadcast::addActiveWindowExclusion(ex.first, ex.second);
+    }
 }
 
 void Disseminate::windowDoubleClicked(QListWidgetItem* item)

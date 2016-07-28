@@ -73,6 +73,7 @@ static Windows windows;
 static ReadKey readKey = { nullptr, nullptr, nullptr };
 static KeyList keyList = { broadcast::WhiteList, std::unordered_map<int64_t, std::vector<uint64_t> >() };
 static std::unordered_map<uint64_t, KeyList> windowKeyList;
+static std::unordered_map<int64_t, std::vector<uint64_t> > exclusions;
 
 void broadcast::addWindow(uint64_t window)
 {
@@ -138,6 +139,17 @@ static inline bool allowKey(const KeyList& keyList, int64_t virt, CGEventFlags f
     return true;
 }
 
+static inline bool excluded(int64_t virt, CGEventFlags flags)
+{
+    const auto eit = exclusions.find(virt);
+    if (eit == exclusions.end())
+        return false;
+    const auto& vec = eit->second;
+    if (std::find(vec.begin(), vec.end(), flags) == vec.end())
+        return false;
+    return true;
+}
+
 CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
                                     CGEventType type,
                                     CGEventRef event,
@@ -150,8 +162,11 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
         const int64_t virt = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         const CGEventFlags flags = CGEventGetFlags(event);
 
-        if (!allowKey(keyList, virt, flags))
+        if (!allowKey(keyList, virt, flags)) {
+            if (excluded(virt, flags))
+                return 0;
             return event;
+        }
         for (auto& source : windows.sources) {
             if (!equalsPsn(local->psn.psn, source.psn.psn)) {
                 const auto windowList = windowKeyList.find(source.psn.intpsn);
@@ -163,10 +178,12 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
                 CGEventPostToPSN(&source.psn, event);
             }
         }
+        if (excluded(virt, flags))
+            return 0;
     }
 
    // send event to next application
-   return event;
+    return event;
 }
 
 CGEventRef readkeyCGEventCallback(CGEventTapProxy /*proxy*/,
@@ -574,4 +591,22 @@ void broadcast::clearKeysForWindow(uint64_t psn)
     auto it = windowKeyList.find(psn);
     if (it != windowKeyList.end())
         windowKeyList.erase(it);
+}
+
+void broadcast::addActiveWindowExclusion(int64_t key, uint64_t mask)
+{
+    exclusions[key].push_back(mask);
+}
+
+void broadcast::clearActiveWindowExclusions()
+{
+    exclusions.clear();
+}
+
+void broadcast::setBinding(Binding binding, int64_t key, uint64_t mask)
+{
+}
+
+void broadcast::clearBinding(Binding binding)
+{
 }

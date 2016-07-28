@@ -62,6 +62,7 @@ private slots:
     void templates();
 
     void reloadWindows();
+    void updateBindings();
 
     void templateChosen(uint64_t psn, const QString& name);
 
