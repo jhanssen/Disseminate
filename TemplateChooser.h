@@ -16,57 +16,41 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef WINDOWSELECTOR_H
-#define WINDOWSELECTOR_H
+#ifndef TEMPLATECHOOSER_H
+#define TEMPLATECHOOSER_H
 
 #include <QDialog>
-#include <QList>
-#include <QString>
-#include <QListWidgetItem>
-#include <QVBoxLayout>
+#include <QStringList>
 
 namespace Ui {
-class WindowSelector;
+class TemplateChooser;
 }
 
 namespace helpers {
 class ScreenShotWidget;
 }
 
-class WindowSelector : public QDialog
+class QVBoxLayout;
+
+class TemplateChooser : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit WindowSelector(QWidget *parent = 0);
-    ~WindowSelector();
-
-    void init();
-
-    struct Window
-    {
-        QString name;
-        uint64_t psn, winid;
-        QPixmap icon;
-
-        bool operator==(const Window& other) const
-        {
-            return name == other.name && psn == other.psn;
-        }
-    };
-    static QList<Window> getWindowList();
+    explicit TemplateChooser(QWidget *parent, const QString& current, const QStringList& temps, uint64_t psn, uint64_t windowId);
+    ~TemplateChooser();
 
 signals:
-    void windowSelected(const QString& name, uint64_t psn, uint64_t id, const QPixmap& image);
+    void chosen(uint64_t psn, const QString& templ);
 
 private slots:
-    void emitSelected();
-    void itemChanged(const QListWidgetItem* item);
+    void emitChosen();
 
 private:
-    Ui::WindowSelector *ui;
+    Ui::TemplateChooser *ui;
     helpers::ScreenShotWidget* screenShot;
     QVBoxLayout* screenShotLayout;
+    uint64_t wpsn, wid;
 };
 
-#endif // WINDOWSELECTOR_H
+#endif // TEMPLATECHOOSER_H

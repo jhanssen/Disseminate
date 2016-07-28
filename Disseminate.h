@@ -20,6 +20,7 @@
 #define DISSEMINATE_H
 
 #include <QMainWindow>
+#include <QMap>
 #include "WindowSelector.h"
 #include "Preferences.h"
 #include "Templates.h"
@@ -27,6 +28,8 @@
 namespace Ui {
 class Disseminate;
 }
+
+class QListWidgetItem;
 
 class Disseminate : public QMainWindow
 {
@@ -44,6 +47,7 @@ private slots:
     void keyAdded(int64_t key, uint64_t mask);
     void preferencesChanged(const Preferences::Config& cfg);
     void templatesChanged(const Templates::Config& cfg);
+    void windowDoubleClicked(QListWidgetItem* item);
 
     void startBroadcast();
     void stopBroadcast();
@@ -59,6 +63,8 @@ private slots:
 
     void reloadWindows();
 
+    void templateChosen(uint64_t psn, const QString& name);
+
 private:
     void saveConfig();
     void loadConfig();
@@ -71,6 +77,7 @@ private:
 
     Preferences::Config prefs;
     Templates::Config temps;
+    QMap<uint64_t, QString> chosenTemplates;
 };
 
 #endif // DISSEMINATE_H

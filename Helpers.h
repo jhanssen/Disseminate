@@ -20,6 +20,8 @@
 #define HELPERS_H
 
 #include <QListWidget>
+#include <QWidget>
+#include <QPainter>
 #include "Utils.h"
 
 namespace helpers {
@@ -45,6 +47,44 @@ inline QString keyToQString(int64_t key, uint64_t mask)
         keystr += "-";
     return keystr + helpers::toQString(broadcast::keyToString(key));
 }
+
+class ScreenShotWidget : public QWidget
+{
+public:
+    ScreenShotWidget(QWidget* p)
+        : QWidget(p)
+    {
+        setMinimumSize(100, 100);
+        setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    }
+
+    void setPixmap(const QPixmap& pm)
+    {
+        pixmap = pm;
+    }
+
+protected:
+    void paintEvent(QPaintEvent*)
+    {
+        QPainter painter(this);
+        if (!pixmap.isNull()) {
+            QRect wr = rect();
+            const double fracx = static_cast<double>(wr.width()) / pixmap.width();
+            const double fracy = static_cast<double>(wr.height()) / pixmap.height();
+            if (fracx < fracy) {
+                // ratio for width
+                wr.setHeight(pixmap.height() * fracx);
+            } else {
+                // ratio for height
+                wr.setWidth(pixmap.width() * fracy);
+            }
+            painter.drawPixmap(wr, pixmap);
+        }
+    }
+
+private:
+    QPixmap pixmap;
+};
 } // namespace helpers
 
 #endif

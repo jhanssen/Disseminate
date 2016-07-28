@@ -21,6 +21,7 @@
 #include "Item.h"
 #include "Utils.h"
 #include "Helpers.h"
+#include "TemplateChooser.h"
 #include "ui_Disseminate.h"
 #include <QMessageBox>
 #include <QSettings>
@@ -35,6 +36,8 @@ Disseminate::Disseminate(QWidget *parent) :
 
     loadConfig();
     applyConfig();
+
+    connect(ui->windowList, &QListWidget::itemDoubleClicked, this, &Disseminate::windowDoubleClicked);
 
     connect(ui->addWindow, &QPushButton::clicked, this, &Disseminate::addWindow);
     connect(ui->removeWindow, &QPushButton::clicked, this, &Disseminate::removeWindow);
@@ -364,4 +367,20 @@ void Disseminate::reloadWindows()
 
     if (cap)
         startBroadcast();
+}
+
+void Disseminate::windowDoubleClicked(QListWidgetItem* item)
+{
+    if (!item)
+        return;
+    WindowItem* witem = static_cast<WindowItem*>(item);
+    TemplateChooser chooser(this, chosenTemplates[witem->wpsn], temps.keys(), witem->wpsn, witem->wid);
+    connect(&chooser, &TemplateChooser::chosen, this, &Disseminate::templateChosen);
+
+    chooser.exec();
+}
+
+void Disseminate::templateChosen(uint64_t psn, const QString& name)
+{
+    chosenTemplates[psn] = name;
 }
