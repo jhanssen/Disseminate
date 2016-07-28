@@ -53,6 +53,8 @@ void stopReadKey();
 
 std::string keyToString(int64_t key);
 std::string maskToString(uint64_t mask);
+
+void cleanup();
 };
 
 #endif

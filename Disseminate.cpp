@@ -60,6 +60,7 @@ Disseminate::Disseminate(QWidget *parent) :
 Disseminate::~Disseminate()
 {
     broadcast::stop();
+    broadcast::cleanup();
     delete selector;
     delete ui;
 }

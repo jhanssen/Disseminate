@@ -23,6 +23,23 @@
 #include <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 
+static FILE* logfile = 0;
+
+static void log(const char* format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    char buf[1024];
+    const int len = vsnprintf(buf, sizeof(buf), format, ap);
+    va_end(ap);
+
+    if (!logfile) {
+        logfile = fopen("/tmp/disseminate.log", "w");
+    }
+    fwrite(buf, 1, len, logfile);
+    fwrite("\n", 1, 2, logfile);
+}
+
 static bool equalsPsn(const ProcessSerialNumber& p1, const ProcessSerialNumber& p2)
 {
     return p1.highLongOfPSN == p2.highLongOfPSN && p1.lowLongOfPSN == p2.lowLongOfPSN;
@@ -651,5 +668,13 @@ void broadcast::clearBinding(Binding binding)
     if (b) {
         b->first = 0;
         b->second = 0;
+    }
+}
+
+void broadcast::cleanup()
+{
+    if (logfile) {
+        fclose(logfile);
+        logfile = 0;
     }
 }
