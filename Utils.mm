@@ -30,18 +30,18 @@ static bool equalsPsn(const ProcessSerialNumber& p1, const ProcessSerialNumber& 
 
 struct LocalWindow;
 
-struct Source
-{
-    ProcessSerialNumber psn;
-    CFMachPortRef tap;
-    CFRunLoopSourceRef source;
-    LocalWindow* local;
-};
-
 struct PSN
 {
     ProcessSerialNumber psn;
     uint64_t intpsn;
+};
+
+struct Source
+{
+    PSN psn;
+    CFMachPortRef tap;
+    CFRunLoopSourceRef source;
+    LocalWindow* local;
 };
 
 struct Windows
@@ -152,14 +152,13 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
 
         if (!allowKey(keyList, virt, flags))
             return event;
-        const auto windowList = windowKeyList.find(local->psn.intpsn);
-        if (windowList != windowKeyList.end()) {
-            if (!allowKey(windowList->second, virt, flags))
-                return event;
-        }
-
         for (auto& source : windows.sources) {
-            if (!equalsPsn(local->psn.psn, source.psn)) {
+            if (!equalsPsn(local->psn.psn, source.psn.psn)) {
+                const auto windowList = windowKeyList.find(source.psn.intpsn);
+                if (windowList != windowKeyList.end()) {
+                    if (!allowKey(windowList->second, virt, flags))
+                        continue;
+                }
                 //CGEventRef copy = CGEventCreateCopy(event);
                 CGEventPostToPSN(&source.psn, event);
             }
@@ -208,7 +207,7 @@ bool broadcast::start()
         CFRunLoopSourceRef source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
         CFRunLoopAddSource(runloop, source, kCFRunLoopCommonModes);
 
-        windows.sources.push_back({ psn.psn, eventTap, source, local });
+        windows.sources.push_back({ psn, eventTap, source, local });
     }
     return true;
 }
