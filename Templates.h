@@ -19,6 +19,7 @@
 #ifndef TEMPLATES_H
 #define TEMPLATES_H
 
+#include "Helpers.h"
 #include <QDialog>
 #include <QString>
 #include <QVector>
@@ -37,7 +38,7 @@ class Templates : public QDialog
 public:
     struct ConfigItem
     {
-        QVector<QPair<int64_t, uint64_t> > keys;
+        QVector<KeyCode> keys;
         bool whitelist;
     };
     typedef QMap<QString, ConfigItem> Config;

@@ -24,6 +24,8 @@
 #include <QPainter>
 #include "Utils.h"
 
+typedef QPair<int64_t, uint64_t> KeyCode;
+
 namespace helpers {
 inline bool contains(QListWidget* listWidget, const QString &text)
 {

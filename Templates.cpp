@@ -145,7 +145,7 @@ void Templates::keyAdded(int64_t key, uint64_t mask)
     assert(item);
     const QString name = helpers::keyToQString(key, mask);
     if (!helpers::contains(ui->keyList, name)) {
-        config[item->text()].keys.append(QPair<int64_t, uint64_t>(key, mask));
+        config[item->text()].keys.append(KeyCode(key, mask));
         ui->keyList->addItem(new KeyItem(name, key, mask));
     }
 }

@@ -257,11 +257,11 @@ void Disseminate::loadConfig()
         if (ventry.contains("whitelist") && ventry.contains("keys")) {
             Templates::ConfigItem titem;
             const QList<QVariant> vkeys = ventry["keys"].toList();
-            QVector<QPair<int64_t, uint64_t> >& tkeys = titem.keys;
+            QVector<KeyCode>& tkeys = titem.keys;
             for (const auto& k : vkeys) {
                 const QVariantMap km = k.toMap();
                 if (km.contains("key") && km.contains("mask")) {
-                    QPair<int64_t, uint64_t> tkey;
+                    KeyCode tkey;
                     tkey.first = km["key"].toLongLong();
                     tkey.second = km["mask"].toULongLong();
                     tkeys.append(tkey);
