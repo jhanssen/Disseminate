@@ -75,6 +75,9 @@ static KeyList keyList = { broadcast::WhiteList, std::unordered_map<int64_t, std
 static std::unordered_map<uint64_t, KeyList> windowKeyList;
 static std::unordered_map<int64_t, std::vector<uint64_t> > exclusions;
 
+static bool broadcastingKeys = true;
+static std::pair<int64_t, uint64_t> globalKey = { 0, 0 };
+
 void broadcast::addWindow(uint64_t window)
 {
     ProcessSerialNumber psn;
@@ -150,6 +153,11 @@ static inline bool excluded(int64_t virt, CGEventFlags flags)
     return true;
 }
 
+static inline bool checkBinding(const std::pair<int64_t, uint64_t>& c, int64_t virt, CGEventFlags flags)
+{
+    return (c.first == virt && c.second == flags);
+}
+
 CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
                                     CGEventType type,
                                     CGEventRef event,
@@ -161,6 +169,14 @@ CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
     if(type == NX_KEYDOWN || type == NX_KEYUP) {
         const int64_t virt = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         const CGEventFlags flags = CGEventGetFlags(event);
+
+        if (checkBinding(globalKey, virt, flags)) {
+            broadcastingKeys = !broadcastingKeys;
+            return 0;
+        }
+
+        if (!broadcastingKeys)
+            return event;
 
         if (!allowKey(keyList, virt, flags)) {
             if (excluded(virt, flags))
@@ -226,6 +242,9 @@ bool broadcast::start()
 
         windows.sources.push_back({ psn, eventTap, source, local });
     }
+
+    broadcastingKeys = true;
+
     return true;
 }
 
@@ -605,8 +624,32 @@ void broadcast::clearActiveWindowExclusions()
 
 void broadcast::setBinding(Binding binding, int64_t key, uint64_t mask)
 {
+    std::pair<int64_t, uint64_t>* b = 0;
+    switch (binding) {
+    case Keyboard:
+        b = &globalKey;
+        break;
+    default:
+        break;
+    }
+    if (b) {
+        b->first = key;
+        b->second = mask;
+    }
 }
 
 void broadcast::clearBinding(Binding binding)
 {
+    std::pair<int64_t, uint64_t>* b = 0;
+    switch (binding) {
+    case Keyboard:
+        b = &globalKey;
+        break;
+    default:
+        break;
+    }
+    if (b) {
+        b->first = 0;
+        b->second = 0;
+    }
 }
