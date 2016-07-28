@@ -19,8 +19,10 @@
 #ifndef PREFERENCES_H
 #define PREFERENCES_H
 
+#include "Helpers.h"
 #include <QDialog>
 #include <QStringList>
+#include <QVector>
 
 namespace Ui {
 class Preferences;
@@ -33,6 +35,8 @@ class Preferences : public QDialog
 public:
     struct Config
     {
+        KeyCode globalKey, globalMouse;
+        QVector<KeyCode> exclusions;
         QStringList automaticWindows;
     };
 
@@ -44,10 +48,20 @@ signals:
 
 private slots:
     void emitConfigChanged();
+
+    void addKeyBind();
+    void removeKeyBind();
+    void addMouseBind();
+    void removeMouseBind();
+
+    void addExclusion();
+    void removeExclusion();
+
     void addWindow();
     void removeWindow();
 
 private:
+    KeyCode globalKey, globalMouse;
     Ui::Preferences *ui;
 };
 

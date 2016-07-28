@@ -20,6 +20,7 @@
 #include "Helpers.h"
 #include "Utils.h"
 #include "ui_KeyInput.h"
+#include <QMessageBox>
 
 KeyInput::KeyInput(QWidget *parent) :
     QDialog(parent),
@@ -58,4 +59,17 @@ void KeyInput::keyPressEvent(QKeyEvent*)
 
 void KeyInput::keyReleaseEvent(QKeyEvent*)
 {
+}
+
+KeyCode KeyInput::getKeyCode(QWidget* parent)
+{
+    KeyCode code = { 0, 0 };
+    KeyInput readKey(parent);
+    if (readKey.valid()) {
+        connect(&readKey, &KeyInput::keyAdded, [&code](int64_t k, uint64_t m) { code.first = k; code.second = m; });
+        readKey.exec();
+    } else {
+        QMessageBox::critical(parent, "Unable to capture key", "Unable to capture key, ensure that the app is allowed to control your computer");
+    }
+    return code;
 }

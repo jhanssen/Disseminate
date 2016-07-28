@@ -18,18 +18,36 @@
 
 #include "Preferences.h"
 #include "ui_Preferences.h"
+#include "Item.h"
+#include "KeyInput.h"
 #include <QInputDialog>
 
 Preferences::Preferences(QWidget *parent, const Config& cfg) :
     QDialog(parent),
+    globalKey(cfg.globalKey),
+    globalMouse(cfg.globalMouse),
     ui(new Ui::Preferences)
 {
     ui->setupUi(this);
     for (const auto& str : cfg.automaticWindows) {
         ui->windowList->addItem(str);
     }
+    for (const auto& ex : cfg.exclusions) {
+        ui->exclusionList->addItem(new KeyItem(helpers::keyToQString(ex), ex.first, ex.second));
+    }
+    ui->keyEdit->setText(helpers::keyToQString(globalKey));
+    ui->mouseEdit->setText(helpers::keyToQString(globalMouse));
 
     connect(this, &Preferences::accepted, this, &Preferences::emitConfigChanged);
+
+    connect(ui->addKeyBind, &QPushButton::clicked, this, &Preferences::addKeyBind);
+    connect(ui->removeKeyBind, &QPushButton::clicked, this, &Preferences::removeKeyBind);
+    connect(ui->addMouseBind, &QPushButton::clicked, this, &Preferences::addMouseBind);
+    connect(ui->removeMouseBind, &QPushButton::clicked, this, &Preferences::removeMouseBind);
+
+    connect(ui->addExclusion, &QPushButton::clicked, this, &Preferences::addExclusion);
+    connect(ui->removeExclusion, &QPushButton::clicked, this, &Preferences::removeExclusion);
+
     connect(ui->addWindow, &QPushButton::clicked, this, &Preferences::addWindow);
     connect(ui->removeWindow, &QPushButton::clicked, this, &Preferences::removeWindow);
 }
@@ -47,7 +65,57 @@ void Preferences::emitConfigChanged()
         QListWidgetItem* item = ui->windowList->item(i);
         cfg.automaticWindows.append(item->text());
     }
+    const int exclusionCount = ui->exclusionList->count();
+    for (int i = 0; i < exclusionCount; ++i) {
+        KeyItem* item = static_cast<KeyItem*>(ui->exclusionList->item(i));
+        cfg.exclusions.append(KeyCode(item->key, item->mask));
+    }
+    cfg.globalKey = globalKey;
+    cfg.globalMouse = globalMouse;
     emit configChanged(cfg);
+}
+
+void Preferences::addKeyBind()
+{
+    globalKey = KeyInput::getKeyCode(this);
+    ui->keyEdit->setText(helpers::keyToQString(globalKey));
+}
+
+void Preferences::removeKeyBind()
+{
+    globalKey = { 0, 0 };
+    ui->keyEdit->setText(helpers::keyToQString(globalKey));
+}
+
+void Preferences::addMouseBind()
+{
+    globalMouse = KeyInput::getKeyCode(this);
+    ui->mouseEdit->setText(helpers::keyToQString(globalMouse));
+}
+
+void Preferences::removeMouseBind()
+{
+    globalMouse = { 0, 0 };
+    ui->mouseEdit->setText(helpers::keyToQString(globalMouse));
+}
+
+void Preferences::addExclusion()
+{
+    const KeyCode kc = KeyInput::getKeyCode(this);
+    if (helpers::keyIsNull(kc))
+        return;
+    const QString str = helpers::keyToQString(kc);
+    if (helpers::contains(ui->exclusionList, str))
+        return;
+    ui->exclusionList->addItem(new KeyItem(str, kc.first, kc.second));
+}
+
+void Preferences::removeExclusion()
+{
+    const auto& items = ui->exclusionList->selectedItems();
+    for (auto& item : items) {
+        delete item;
+    }
 }
 
 void Preferences::addWindow()

@@ -44,10 +44,23 @@ inline QString toQString(const std::string& str)
 
 inline QString keyToQString(int64_t key, uint64_t mask)
 {
+    if (!key && !mask)
+        return QString();
+
     QString keystr = helpers::toQString(broadcast::maskToString(mask));
     if (!keystr.isEmpty())
         keystr += "-";
     return keystr + helpers::toQString(broadcast::keyToString(key));
+}
+
+inline QString keyToQString(const KeyCode& code)
+{
+    return keyToQString(code.first, code.second);
+}
+
+inline bool keyIsNull(const KeyCode& code)
+{
+    return (!code.first && !code.second);
 }
 
 class ScreenShotWidget : public QWidget

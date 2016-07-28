@@ -38,7 +38,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QLineEdit" name="textEdit">
+           <widget class="QLineEdit" name="keyEdit">
             <property name="readOnly">
              <bool>true</bool>
             </property>

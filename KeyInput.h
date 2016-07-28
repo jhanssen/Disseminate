@@ -19,6 +19,7 @@
 #ifndef KEYINPUT_H
 #define KEYINPUT_H
 
+#include "Helpers.h"
 #include <QDialog>
 
 namespace Ui {
@@ -34,6 +35,8 @@ public:
     ~KeyInput();
 
     bool valid() const { return capturing; }
+
+    static KeyCode getKeyCode(QWidget* parent);
 
 protected:
     void keyPressEvent(QKeyEvent*);

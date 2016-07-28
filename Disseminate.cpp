@@ -250,10 +250,10 @@ void Disseminate::loadConfig()
     temps.clear();
     const QVariantMap templates = settings.value("templates").toMap();
     // uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
-    QVariantMap::const_iterator it = templates.begin();
-    const QVariantMap::const_iterator end = templates.end();
-    while (it != end) {
-        const QVariantMap ventry = it.value().toMap();
+    QVariantMap::const_iterator tempit = templates.begin();
+    const QVariantMap::const_iterator tempend = templates.end();
+    while (tempit != tempend) {
+        const QVariantMap ventry = tempit.value().toMap();
         if (ventry.contains("whitelist") && ventry.contains("keys")) {
             Templates::ConfigItem titem;
             const QList<QVariant> vkeys = ventry["keys"].toList();
@@ -268,9 +268,37 @@ void Disseminate::loadConfig()
                 }
             }
             titem.whitelist = ventry["whitelist"].toBool();
-            temps[it.key()] = titem;
+            temps[tempit.key()] = titem;
         }
-        ++it;
+        ++tempit;
+    }
+
+    prefs.globalKey = { 0, 0 };
+    prefs.globalMouse = { 0, 0 };
+    QVariantMap bindings = settings.value("bindings").toMap();
+    if (bindings.contains("keyboard") && bindings.contains("mouse")) {
+        QVariantMap v = bindings.value("keyboard").toMap();
+        if (v.contains("key") && v.contains("mask")) {
+            prefs.globalKey.first = v["key"].toLongLong();
+            prefs.globalKey.second = v["mask"].toULongLong();
+        }
+        v = bindings.value("mouse").toMap();
+        if (v.contains("key") && v.contains("mask")) {
+            prefs.globalMouse.first = v["key"].toLongLong();
+            prefs.globalMouse.second = v["mask"].toULongLong();
+        }
+    }
+
+    prefs.exclusions.clear();
+    QList<QVariant> exclusions = settings.value("exclusions").toList();
+    for (const auto& exclusion : exclusions) {
+        const QVariantMap km = exclusion.toMap();
+        if (km.contains("key") && km.contains("mask")) {
+            KeyCode ekey;
+            ekey.first = km["key"].toLongLong();
+            ekey.second = km["mask"].toULongLong();
+            prefs.exclusions.append(ekey);
+        }
     }
 }
 
@@ -318,6 +346,30 @@ void Disseminate::saveConfig()
         }
     }
     settings.setValue("templates", templates);
+
+    QVariantMap bindings;
+    {
+        QVariantMap key, mouse;
+        key["key"] = prefs.globalKey.first;
+        key["mask"] = prefs.globalKey.second;
+        mouse["key"] = prefs.globalMouse.first;
+        mouse["mask"] = prefs.globalMouse.second;
+        bindings["keyboard"] = key;
+        bindings["mouse"] = mouse;
+    }
+    settings.setValue("bindings", bindings);
+
+    QList<QVariant> exclusions;
+    {
+        const int exclusionCount = prefs.exclusions.size();
+        for (int i = 0; i < exclusionCount; ++i) {
+            QVariantMap exclusion;
+            exclusion["key"] = prefs.exclusions[i].first;
+            exclusion["mask"] = prefs.exclusions[i].second;
+            exclusions.append(exclusion);
+        }
+    }
+    settings.setValue("exclusions", exclusions);
 }
 
 void Disseminate::applyConfig()
