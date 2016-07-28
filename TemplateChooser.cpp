@@ -38,6 +38,7 @@ TemplateChooser::TemplateChooser(QWidget *parent, const QString& current, const 
             ui->templateList->setCurrentItem(item);
     }
 
+    connect(ui->templateList, &QListWidget::itemDoubleClicked, this, &TemplateChooser::accept);
     connect(this, &TemplateChooser::accepted, this, &TemplateChooser::emitChosen);
 
     screenShot = new helpers::ScreenShotWidget(ui->widget);
