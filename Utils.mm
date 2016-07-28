@@ -276,6 +276,9 @@ void broadcast::stop()
         CFMachPortInvalidate(source.tap);
         CFRelease(source.tap);
     }
+    for (auto& source : windows.sources) {
+        delete source.local;
+    }
     windows.sources.clear();
 }
 
