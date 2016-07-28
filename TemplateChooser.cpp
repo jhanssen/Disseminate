@@ -57,5 +57,8 @@ void TemplateChooser::emitChosen()
 {
     if (!ui->templateList->currentItem())
         return;
-    emit chosen(wpsn, ui->templateList->currentItem()->text());
+    if (ui->templateList->row(ui->templateList->currentItem()) == 0)
+        emit chosen(wpsn, QString());
+    else
+        emit chosen(wpsn, ui->templateList->currentItem()->text());
 }

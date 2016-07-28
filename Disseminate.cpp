@@ -383,4 +383,13 @@ void Disseminate::windowDoubleClicked(QListWidgetItem* item)
 void Disseminate::templateChosen(uint64_t psn, const QString& name)
 {
     chosenTemplates[psn] = name;
+    broadcast::clearKeysForWindow(psn);
+    if (name.isEmpty())
+        return;
+    const auto& item = temps[name];
+    broadcast::setKeyTypeForWindow(psn, item.whitelist ? broadcast::WhiteList : broadcast::BlackList);
+    const auto& keys = item.keys;
+    for (const auto& key : keys) {
+        broadcast::addKeyForWindow(psn, key.first, key.second);
+    }
 }

@@ -34,6 +34,10 @@ void addKey(int64_t key, uint64_t mask);
 void removeKey(int64_t key, uint64_t mask);
 void clearKeys();
 
+void setKeyTypeForWindow(uint64_t psn, KeyType type);
+void addKeyForWindow(uint64_t psn, int64_t key, uint64_t mask);
+void clearKeysForWindow(uint64_t psn);
+
 bool start();
 void stop();
 

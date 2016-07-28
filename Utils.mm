@@ -38,15 +38,21 @@ struct Source
     LocalWindow* local;
 };
 
+struct PSN
+{
+    ProcessSerialNumber psn;
+    uint64_t intpsn;
+};
+
 struct Windows
 {
-    std::vector<ProcessSerialNumber> psns;
+    std::vector<PSN> psns;
     std::vector<Source> sources;
 };
 
 struct LocalWindow
 {
-    ProcessSerialNumber psn;
+    PSN psn;
     Windows* windows;
 };
 
@@ -66,13 +72,14 @@ struct KeyList
 static Windows windows;
 static ReadKey readKey = { nullptr, nullptr, nullptr };
 static KeyList keyList = { broadcast::WhiteList, std::unordered_map<int64_t, std::vector<uint64_t> >() };
+static std::unordered_map<uint64_t, KeyList> windowKeyList;
 
 void broadcast::addWindow(uint64_t window)
 {
     ProcessSerialNumber psn;
     psn.highLongOfPSN = window >> 32;
     psn.lowLongOfPSN = window & 0x00000000FFFFFFFFLLU;
-    windows.psns.push_back(psn);
+    windows.psns.push_back({ psn, window });
 }
 
 void broadcast::removeWindow(uint64_t window)
@@ -83,7 +90,7 @@ void broadcast::removeWindow(uint64_t window)
     auto it = windows.psns.begin();
     const auto& end = windows.psns.cend();
     while (it != end) {
-        if (equalsPsn(*it, psn)) {
+        if (equalsPsn(it->psn, psn)) {
             windows.psns.erase(it);
             return;
         }
@@ -109,38 +116,50 @@ static ProcessSerialNumber activePSN()
     return psn;
 }
 
+static inline bool allowKey(const KeyList& keyList, int64_t virt, CGEventFlags flags)
+{
+    const auto keyit = keyList.keys.find(virt);
+    switch (keyList.type) {
+    case broadcast::WhiteList: {
+        if (keyit == keyList.keys.end())
+            return false;
+        const auto& vec = keyit->second;
+        if (std::find(vec.begin(), vec.end(), flags) == vec.end())
+            return false;
+        break; }
+    case broadcast::BlackList: {
+        if (keyit == keyList.keys.end())
+            break;
+        const auto& vec = keyit->second;
+        if (std::find(vec.begin(), vec.end(), flags) == vec.end())
+            break;
+        return false; }
+    }
+    return true;
+}
+
 CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
                                     CGEventType type,
                                     CGEventRef event,
                                     void *refcon)
 {
     LocalWindow* local = static_cast<LocalWindow*>(refcon);
-    if (!equalsPsn(local->psn, activePSN()))
+    if (!equalsPsn(local->psn.psn, activePSN()))
         return event;
     if(type == NX_KEYDOWN || type == NX_KEYUP) {
         const int64_t virt = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
         const CGEventFlags flags = CGEventGetFlags(event);
 
-        const auto keyit = keyList.keys.find(virt);
-        switch (keyList.type) {
-        case broadcast::WhiteList: {
-            if (keyit == keyList.keys.end())
+        if (!allowKey(keyList, virt, flags))
+            return event;
+        const auto windowList = windowKeyList.find(local->psn.intpsn);
+        if (windowList != windowKeyList.end()) {
+            if (!allowKey(windowList->second, virt, flags))
                 return event;
-            const auto& vec = keyit->second;
-            if (std::find(vec.begin(), vec.end(), flags) == vec.end())
-                return event;
-            break; }
-        case broadcast::BlackList: {
-            if (keyit == keyList.keys.end())
-                break;
-            const auto& vec = keyit->second;
-            if (std::find(vec.begin(), vec.end(), flags) == vec.end())
-                break;
-            return event; }
         }
 
         for (auto& source : windows.sources) {
-            if (!equalsPsn(local->psn, source.psn)) {
+            if (!equalsPsn(local->psn.psn, source.psn)) {
                 //CGEventRef copy = CGEventCreateCopy(event);
                 CGEventPostToPSN(&source.psn, event);
             }
@@ -189,7 +208,7 @@ bool broadcast::start()
         CFRunLoopSourceRef source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
         CFRunLoopAddSource(runloop, source, kCFRunLoopCommonModes);
 
-        windows.sources.push_back({ psn, eventTap, source, local });
+        windows.sources.push_back({ psn.psn, eventTap, source, local });
     }
     return true;
 }
@@ -537,4 +556,23 @@ std::string broadcast::maskToString(uint64_t mask)
     //     m += "NonCoalesced";
     // }
     return m;
+}
+
+void broadcast::setKeyTypeForWindow(uint64_t psn, KeyType type)
+{
+    auto& keyList = windowKeyList[psn];
+    keyList.type = type;
+}
+
+void broadcast::addKeyForWindow(uint64_t psn, int64_t key, uint64_t mask)
+{
+    auto& keyList = windowKeyList[psn];
+    keyList.keys[key].push_back(mask);
+}
+
+void broadcast::clearKeysForWindow(uint64_t psn)
+{
+    auto it = windowKeyList.find(psn);
+    if (it != windowKeyList.end())
+        windowKeyList.erase(it);
 }
