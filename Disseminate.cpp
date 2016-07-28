@@ -413,10 +413,9 @@ void Disseminate::reloadWindows()
         }
     }
     // then readd automatic windows
-    const QList<WindowSelector::Window> autoWindows = WindowSelector::getWindowList();
     for (const auto& str : prefs.automaticWindows) {
         QRegExp rx(str, Qt::CaseInsensitive);
-        for (const auto& win : autoWindows) {
+        for (const auto& win : windows) {
             if (rx.indexIn(win.name) != -1) {
                 const QString str = win.name + " (" + QString::number(win.psn) + ")";
                 if (!helpers::contains(ui->windowList, str)) {
