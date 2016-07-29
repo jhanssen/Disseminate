@@ -13,6 +13,10 @@ set(SOURCES main.mm)
 find_library(COCOA_FOUNDATION Foundation)
 find_library(COCOA_APPKIT AppKit)
 
+if(NOT IS_DIRECTORY Selene)
+    execute_process(COMMAND git submodule update --init)
+endif()
+
 ExternalProject_Add(
     lua
     BINARY_DIR ${CMAKE_BINARY_DIR}/externals/lua-build
@@ -30,5 +34,5 @@ find_library(LUA_LIBRARY lua HINTS ${CMAKE_BINARY_DIR}/externals/lua/lib)
 find_path(LUA_INCLUDE_DIR lua.h HINTS ${CMAKE_BINARY_DIR}/externals/lua/include)
 
 add_library(Swizzler SHARED ${SOURCES})
-include_directories(${LUA_INCLUDE_DIR})
+include_directories(${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_LIST_DIR}/Selene/include)
 target_link_libraries(Swizzler ${COCOA_FOUNDATION} ${COCOA_APPKIT} ${LUA_LIBRARY})

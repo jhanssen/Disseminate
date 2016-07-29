@@ -1,0 +1,3 @@
+[submodule "Swizzler/Selene"]
+	path = Swizzler/Selene
+	url = https://github.com/jeremyong/Selene.git
