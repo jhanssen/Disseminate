@@ -7,3 +7,11 @@ disseminate.app/*
 moc_*.cpp
 ui_*.h
 qrc_*.cpp
+
+.ninja*
+CMakeCache.txt
+CMakeFIles
+build.ninja
+rules.ninja
+libSwizzler*
+cmake_install.cmake
