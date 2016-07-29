@@ -15,3 +15,4 @@ build.ninja
 rules.ninja
 libSwizzler*
 cmake_install.cmake
+Swizzler/externals
