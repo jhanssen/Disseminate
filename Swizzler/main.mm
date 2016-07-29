@@ -8,18 +8,17 @@
 
 @end
 
-static IMP sOriginalImp = NULL;
 std::deque<NSEvent*> sPendingEvents;
 
 static NSGraphicsContext* sContext = 0;
 static NSInteger sEventNumber = 0;
 static NSInteger sEventOffset = 0;
 
-typedef NSEvent* (*Signature)(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag);
-
+typedef NSEvent* (*NextEventSignature)(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag);
+static IMP sNextEventMatchingMaskImp = NULL;
 static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag)
 {
-    Signature sig = (Signature)sOriginalImp;
+    NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
     //printf("next eventing\n");
     NSEvent* event;
     for (;;) {
@@ -56,6 +55,34 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     //printf("got event of type %lu\n", [event type]);
     return event;
 }
+
+// typedef void (*VoidSignature)(id self, SEL cmd);
+
+// static IMP sCursorSet = NULL;
+// static void patchedCursorSet(id self, SEL _cmd)
+// {
+//     printf("cursor set\n");
+//     VoidSignature sig = (VoidSignature)sCursorSet;
+//     sig(self, _cmd);
+// }
+
+// static IMP sCursorPush = NULL;
+// static void patchedCursorPush(id self, SEL _cmd)
+// {
+//     printf("cursor push\n");
+//     VoidSignature sig = (VoidSignature)sCursorPush;
+//     sig(self, _cmd);
+// }
+
+typedef void (*AddCursorRectSignature)(id self, SEL _cmd, NSRect rect, NSCursor* cursor);
+static IMP sAddCursorRect = NULL;
+static void patchedAddCursorRect(id self, SEL _cmd, NSRect rect, NSCursor* cursor)
+{
+    printf("add cursor\n");
+    AddCursorRectSignature sig = (AddCursorRectSignature)sAddCursorRect;
+    sig(self, _cmd, rect, cursor);
+}
+
 
 struct PortData {
     CFMessagePortRef port;
@@ -96,9 +123,23 @@ static CFDataRef DisseminateCallback(CFMessagePortRef port,
 
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-            Method original = class_getInstanceMethod([NSApplication class],
-                                                      @selector(nextEventMatchingMask:untilDate:inMode:dequeue:));
-            sOriginalImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
+            {
+                Method original = class_getInstanceMethod([NSApplication class],
+                                                          @selector(nextEventMatchingMask:untilDate:inMode:dequeue:));
+                sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
+            }
+            // {
+            //     Method original = class_getInstanceMethod([NSCursor class], @selector(set:));
+            //     sCursorSet = method_setImplementation(original, (IMP)patchedCursorSet);
+            // }
+            // {
+            //     Method original = class_getInstanceMethod([NSCursor class], @selector(push:));
+            //     sCursorPush = method_setImplementation(original, (IMP)patchedCursorPush);
+            // }
+            {
+                Method original = class_getInstanceMethod([NSView class], @selector(addCursorRect:cursor:));
+                sAddCursorRect = method_setImplementation(original, (IMP)patchedAddCursorRect);
+            }
 
             dispatch_async(dispatch_get_main_queue(), ^{
                     printf("creating local\n");
