@@ -9,6 +9,6 @@ CONFIG += c++11
 #QMAKE_CXXFLAGS += -fsanitize=address
 #QMAKE_LFLAGS += -fsanitize=address
 
-SOURCES += main.m
+SOURCES += main.mm
 
 LIBS += -framework Foundation -framework AppKit
