@@ -6,15 +6,18 @@
 #include <MouseEvent_generated.h>
 #include <AppKit/NSEvent.h>
 
+class ScriptEngineData;
+
 class ScriptEngine
 {
 public:
     ScriptEngine();
+    ~ScriptEngine();
 
     void evaluate(const std::string& code);
 
-    void send(const Disseminate::MouseEvent* event);
-    bool processEvent(NSEvent* event);
+    void processRemoteEvent(const Disseminate::MouseEvent* event);
+    bool processLocalEvent(NSEvent* event);
 
     enum ClientType { Local, Remote };
     void registerClient(ClientType type, const std::string& uuid);
@@ -22,6 +25,7 @@ public:
 
 private:
     std::unique_ptr<sel::State> state;
+    std::unique_ptr<ScriptEngineData> data;
 };
 
 inline void ScriptEngine::evaluate(const std::string& code)

@@ -36,8 +36,8 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     NSEvent* event;
     for (;;) {
         event = sig(self, _cmd, mask, expiration, mode, flag);
+#warning maybe only look at mouse/key events or give eventloop a list of wanted types?
         if (sCallback && !sCallback(event)) {
-            [event release];
             continue;
         }
         break;

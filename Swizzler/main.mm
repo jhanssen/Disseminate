@@ -1,6 +1,5 @@
 #include "MessagePort.h"
 #include "EventLoop.h"
-#include "ScriptEngine.h"
 #include <stdio.h>
 #include <objc/runtime.h>
 #include <string>
@@ -11,6 +10,10 @@
 #include <MouseEvent_generated.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
+
+// Sucky Cocoa
+#undef check
+#include "ScriptEngine.h"
 
 @interface DisseminateSwizzle : NSObject
 
@@ -127,7 +130,7 @@ static Context context;
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::GetMouseEvent(data.c_str());
-                                context.lua->send(event);
+                                context.lua->processRemoteEvent(event);
                                 break; }
                             default:
                                 break;
@@ -136,7 +139,7 @@ static Context context;
 
                     loop->onEvent([](NSEvent* event) -> bool {
                             printf("iteration\n");
-                            return context.lua->processEvent(event);
+                            return context.lua->processLocalEvent(event);
                         });
 
                     MessagePortRemote remote("jhanssen.disseminate.server");
