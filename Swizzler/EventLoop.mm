@@ -4,7 +4,7 @@
 #include <objc/runtime.h>
 #import  <Cocoa/Cocoa.h>
 
-static std::function<void()> sCallback;
+static std::function<bool(NSEvent*)> sCallback;
 static std::deque<NSEvent*> sPendingEvents;
 
 EventLoop* EventLoop::sEventLoop = 0;
@@ -32,11 +32,17 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         printf("returning fake event window %lu evtno %ld\n", [event windowNumber], [event eventNumber]);
         return event;
     }
-    if (sCallback) {
-        sCallback();
-    }
     NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
-    return sig(self, _cmd, mask, expiration, mode, flag);
+    NSEvent* event;
+    for (;;) {
+        event = sig(self, _cmd, mask, expiration, mode, flag);
+        if (sCallback && !sCallback(event)) {
+            [event release];
+            continue;
+        }
+        break;
+    }
+    return event;
 }
 
 void EventLoop::swizzle()
@@ -46,7 +52,7 @@ void EventLoop::swizzle()
     sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
 }
 
-void EventLoop::onLoopIteration(const std::function<void()>& on)
+void EventLoop::onEvent(const std::function<bool(NSEvent*)>& on)
 {
     sCallback = on;
 }

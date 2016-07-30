@@ -1,19 +1,20 @@
-#ifndef LUA_H
-#define LUA_H
+#ifndef SCRIPTENGINE_H
+#define SCRIPTENGINE_H
 
 #include <string>
 #include <selene.h>
 #include <MouseEvent_generated.h>
+#include <AppKit/NSEvent.h>
 
-class Lua
+class ScriptEngine
 {
 public:
-    Lua();
+    ScriptEngine();
 
     void evaluate(const std::string& code);
 
     void send(const Disseminate::MouseEvent* event);
-    void loop();
+    bool processEvent(NSEvent* event);
 
     enum ClientType { Local, Remote };
     void registerClient(ClientType type, const std::string& uuid);
@@ -23,7 +24,7 @@ private:
     std::unique_ptr<sel::State> state;
 };
 
-inline void Lua::evaluate(const std::string& code)
+inline void ScriptEngine::evaluate(const std::string& code)
 {
     state->LoadStr(code);
 }

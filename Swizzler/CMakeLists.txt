@@ -8,7 +8,7 @@ include(ExternalProject)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-set(SOURCES main.mm MessagePort.mm EventLoop.mm Lua.cpp)
+set(SOURCES main.mm MessagePort.mm EventLoop.mm ScriptEngine.mm)
 
 find_library(COCOA_FOUNDATION Foundation)
 find_library(COCOA_APPKIT AppKit)

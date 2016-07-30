@@ -2,6 +2,7 @@
 #define EVENTLOOP_H
 
 #include <functional>
+#include <AppKit/NSEvent.h>
 
 class EventLoop
 {
@@ -11,7 +12,7 @@ public:
     void swizzle();
     //void addEvent(Event&& event);
 
-    void onLoopIteration(const std::function<void()>& on);
+    void onEvent(const std::function<bool(NSEvent*)>& on);
 
 private:
     EventLoop();

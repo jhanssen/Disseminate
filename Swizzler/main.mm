@@ -1,6 +1,6 @@
 #include "MessagePort.h"
 #include "EventLoop.h"
-#include "Lua.h"
+#include "ScriptEngine.h"
 #include <stdio.h>
 #include <objc/runtime.h>
 #include <string>
@@ -61,7 +61,7 @@ static void patchedAddCursorRect(id self, SEL _cmd, NSRect rect, NSCursor* curso
 struct Context
 {
     std::unique_ptr<MessagePortLocal> port;
-    std::unique_ptr<Lua> lua;
+    std::unique_ptr<ScriptEngine> lua;
 };
 
 static Context context;
@@ -108,6 +108,10 @@ static Context context;
                     EventLoop* loop = EventLoop::eventLoop();
 
                     const std::string uuid = generateUUID();
+
+                    context.lua = std::make_unique<ScriptEngine>();
+                    context.lua->registerClient(ScriptEngine::Local, uuid);
+
                     printf("creating local %s\n", uuid.c_str());
                     context.port = std::make_unique<MessagePortLocal>(uuid);
                     context.port->onMessage([loop](int32_t id, const std::string& data) {
@@ -116,10 +120,10 @@ static Context context;
                                 context.lua->evaluate(data);
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteAdd:
-                                context.lua->registerClient(Lua::Remote, data);
+                                context.lua->registerClient(ScriptEngine::Remote, data);
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteRemove:
-                                context.lua->unregisterClient(Lua::Remote, data);
+                                context.lua->unregisterClient(ScriptEngine::Remote, data);
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::GetMouseEvent(data.c_str());
@@ -129,12 +133,10 @@ static Context context;
                                 break;
                             }
                         });
-                    context.lua = std::make_unique<Lua>();
-                    context.lua->registerClient(Lua::Local, uuid);
 
-                    loop->onLoopIteration([]() {
-                            context.lua->loop();
+                    loop->onEvent([](NSEvent* event) -> bool {
                             printf("iteration\n");
+                            return context.lua->processEvent(event);
                         });
 
                     MessagePortRemote remote("jhanssen.disseminate.server");
