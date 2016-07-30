@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.2)
 
 project(Disseminate)
 
+add_subdirectory(flatbuffers)
+add_subdirectory(Swizzler)
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
