@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.2)
 
 project(Disseminate)
 
+if(NOT IS_DIRECTORY flatbuffers)
+    execute_process(COMMAND git submodule update --init)
+endif()
+
 add_subdirectory(flatbuffers)
 add_subdirectory(Swizzler)
 
