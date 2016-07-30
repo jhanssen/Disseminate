@@ -17,4 +17,8 @@ build.ninja
 rules.ninja
 libSwizzler*
 cmake_install.cmake
-Swizzler/externals
+externals
+*_generated.h
+
+Disseminate.cbp
+CMakeLists.txt.user

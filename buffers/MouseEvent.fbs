@@ -1,0 +1,21 @@
+namespace Disseminate;
+
+enum Type : byte { Move, Press, Release }
+
+struct Location {
+    x: float;
+    y: float;
+}
+
+table MouseEvent
+{
+    type: Type;
+    location: Location;
+    windownumber: int;
+    modifiers: ushort = 0;
+    timestamp: double = 0;
+    clickCount: int = 1;
+    pressure: float = 1;
+}
+
+root_type MouseEvent;
