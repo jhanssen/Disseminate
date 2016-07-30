@@ -9,7 +9,7 @@ endif()
 add_subdirectory(flatbuffers)
 
 find_library(FLATBUFFERS_LIBRARY flatbuffers HINTS ${CMAKE_BINARY_DIR}/flatbuffers)
-include_directories(flatbuffers/include)
+include_directories(flatbuffers/include buffers)
 
 add_subdirectory(Swizzler)
 

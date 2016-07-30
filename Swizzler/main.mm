@@ -1,12 +1,14 @@
 #include "MessagePort.h"
 #include "EventLoop.h"
+#include "Lua.h"
 #include <stdio.h>
 #include <objc/runtime.h>
 #include <string>
-#include <selene.h>
 #include <deque>
 #include <memory>
 #include <unistd.h>
+#include <FlatbufferTypes.h>
+#include <MouseEvent_generated.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
 
@@ -56,11 +58,10 @@ static void patchedAddCursorRect(id self, SEL _cmd, NSRect rect, NSCursor* curso
     sig(self, _cmd, rect, cursor);
 }
 
-
 struct Context
 {
     std::unique_ptr<MessagePortLocal> port;
-    std::unique_ptr<sel::State> lua;
+    std::unique_ptr<Lua> lua;
 };
 
 static Context context;
@@ -104,14 +105,35 @@ static Context context;
             EventLoop::eventLoop()->swizzle();
 
             dispatch_async(dispatch_get_main_queue(), ^{
+                    EventLoop* loop = EventLoop::eventLoop();
+
                     const std::string uuid = generateUUID();
                     printf("creating local %s\n", uuid.c_str());
                     context.port = std::make_unique<MessagePortLocal>(uuid);
-                    context.port->onMessage([](int32_t id, const std::string& data) {
+                    context.port->onMessage([loop](int32_t id, const std::string& data) {
+                            switch (id) {
+                            case Disseminate::FlatbufferTypes::Evaluate:
+                                context.lua->evaluate(data);
+                                break;
+                            case Disseminate::FlatbufferTypes::RemoteAdd:
+                                context.lua->registerClient(Lua::Remote, data);
+                                break;
+                            case Disseminate::FlatbufferTypes::RemoteRemove:
+                                context.lua->unregisterClient(Lua::Remote, data);
+                                break;
+                            case Disseminate::FlatbufferTypes::MouseEvent: {
+                                auto event = Disseminate::GetMouseEvent(data.c_str());
+                                context.lua->send(event);
+                                break; }
+                            default:
+                                break;
+                            }
                         });
-                    context.lua = std::make_unique<sel::State>();
+                    context.lua = std::make_unique<Lua>();
+                    context.lua->registerClient(Lua::Local, uuid);
 
-                    EventLoop::eventLoop()->onLoopIteration([]() {
+                    loop->onLoopIteration([]() {
+                            context.lua->loop();
                             printf("iteration\n");
                         });
 
