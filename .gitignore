@@ -7,6 +7,8 @@ disseminate.app/*
 moc_*.cpp
 ui_*.h
 qrc_*.cpp
+*_automoc.cpp
+*.depends
 
 .ninja*
 CMakeCache.txt
