@@ -1,3 +1,6 @@
 [submodule "Swizzler/Selene"]
 	path = Swizzler/Selene
 	url = https://github.com/jhanssen/Selene.git
+[submodule "flatbuffers"]
+	path = flatbuffers
+	url = https://github.com/google/flatbuffers.git

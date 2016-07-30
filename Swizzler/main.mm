@@ -1,59 +1,32 @@
+#include "MessagePort.h"
+#include "EventLoop.h"
 #include <stdio.h>
 #include <objc/runtime.h>
+#include <string>
+#include <selene.h>
+#include <deque>
+#include <memory>
+#include <unistd.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
-#include <deque>
 
 @interface DisseminateSwizzle : NSObject
 
 @end
 
-std::deque<NSEvent*> sPendingEvents;
-
 static NSGraphicsContext* sContext = 0;
 static NSInteger sEventNumber = 0;
 static NSInteger sEventOffset = 0;
 
-typedef NSEvent* (*NextEventSignature)(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag);
-static IMP sNextEventMatchingMaskImp = NULL;
-static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag)
+static std::string generateUUID()
 {
-    NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
-    //printf("next eventing\n");
-    NSEvent* event;
-    for (;;) {
-        if (!sPendingEvents.empty()) {
-            event = sPendingEvents.front();
-            sPendingEvents.pop_front();
-            printf("returning fake event window %lu evtno %ld\n", [event windowNumber], [event eventNumber]);
-            return event;
-        }
-        event = sig(self, _cmd, mask, expiration, mode, flag);
-        switch ([event type]) {
-        case NSLeftMouseDown:
-        case NSLeftMouseUp: {
-            NSPoint pt = [event locationInWindow];
-            if (!sContext)
-                sContext = [event context];
-            if (sEventNumber < [event eventNumber])
-                sEventNumber = [event eventNumber];
-            printf("got mouse event %f %f in window %lu ctx %p evtno %ld\n", pt.x, pt.y, [event windowNumber], [event context], [event eventNumber]);
-            // if (pt.x > 1760) {
-            //     printf("not passing\n");
-            //     continue;
-            // }
-            //continue;
-            break; }
-        case NSApplicationDefined:
-            printf("app event\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    }
-    //printf("got event of type %lu\n", [event type]);
-    return event;
+    CFUUIDRef uuid = CFUUIDCreate(NULL);
+    CFStringRef strref = CFUUIDCreateString(NULL, uuid);
+    CFRelease(uuid);
+    NSString* str = (NSString *)strref;
+    const std::string string = std::string([str UTF8String]);
+    [str release];
+    return string;
 }
 
 // typedef void (*VoidSignature)(id self, SEL cmd);
@@ -84,36 +57,37 @@ static void patchedAddCursorRect(id self, SEL _cmd, NSRect rect, NSCursor* curso
 }
 
 
-struct PortData {
-    CFMessagePortRef port;
-    CFRunLoopSourceRef source;
+struct Context
+{
+    std::unique_ptr<MessagePortLocal> port;
+    std::unique_ptr<sel::State> lua;
 };
 
-static struct PortData portData;
+static Context context;
 
-static CFDataRef DisseminateCallback(CFMessagePortRef port,
-                                     SInt32 messageID,
-                                     CFDataRef data,
-                                     void *info)
-{
-    printf("got message %x\n", messageID);
-    // let's make a press and release event
-    NSPoint pt = { 1850.121094, 74.417969 };
+// static CFDataRef DisseminateCallback(CFMessagePortRef port,
+//                                      SInt32 messageID,
+//                                      CFDataRef data,
+//                                      void *info)
+// {
+//     printf("got message %x\n", messageID);
+//     // let's make a press and release event
+//     NSPoint pt = { 1850.121094, 74.417969 };
 
-    NSEvent* moved = [NSEvent mouseEventWithType:NSMouseMoved location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
-                                         context:sContext eventNumber:(sEventNumber + 1) clickCount:0 pressure:0];
-    sPendingEvents.push_back(moved);
+//     NSEvent* moved = [NSEvent mouseEventWithType:NSMouseMoved location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
+//                                          context:sContext eventNumber:(sEventNumber + 1) clickCount:0 pressure:0];
+//     sPendingEvents.push_back(moved);
 
-    NSEvent* press = [NSEvent mouseEventWithType:NSLeftMouseDown location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
-                                         context:sContext eventNumber:(sEventNumber + 1) clickCount:1 pressure:1];
-    sPendingEvents.push_back(press);
+//     NSEvent* press = [NSEvent mouseEventWithType:NSLeftMouseDown location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
+//                                          context:sContext eventNumber:(sEventNumber + 1) clickCount:1 pressure:1];
+//     sPendingEvents.push_back(press);
 
-    NSEvent* release = [NSEvent mouseEventWithType:NSLeftMouseUp location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
-                                           context:sContext eventNumber:(sEventNumber + 1) clickCount:1 pressure:1];
-    sPendingEvents.push_back(release);
+//     NSEvent* release = [NSEvent mouseEventWithType:NSLeftMouseUp location:pt modifierFlags:0 timestamp:0 windowNumber:messageID
+//                                            context:sContext eventNumber:(sEventNumber + 1) clickCount:1 pressure:1];
+//     sPendingEvents.push_back(release);
 
-    return 0;
-}
+//     return 0;
+// }
 
 @implementation DisseminateSwizzle
 
@@ -124,34 +98,36 @@ static CFDataRef DisseminateCallback(CFMessagePortRef port,
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
             {
-                Method original = class_getInstanceMethod([NSApplication class],
-                                                          @selector(nextEventMatchingMask:untilDate:inMode:dequeue:));
-                sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
-            }
-            // {
-            //     Method original = class_getInstanceMethod([NSCursor class], @selector(set:));
-            //     sCursorSet = method_setImplementation(original, (IMP)patchedCursorSet);
-            // }
-            // {
-            //     Method original = class_getInstanceMethod([NSCursor class], @selector(push:));
-            //     sCursorPush = method_setImplementation(original, (IMP)patchedCursorPush);
-            // }
-            {
                 Method original = class_getInstanceMethod([NSView class], @selector(addCursorRect:cursor:));
                 sAddCursorRect = method_setImplementation(original, (IMP)patchedAddCursorRect);
             }
+            EventLoop::eventLoop()->swizzle();
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                    printf("creating local\n");
-                    portData.port = CFMessagePortCreateLocal(nil,
-                                                             CFSTR("jhanssen.disseminate.listener"),
-                                                             DisseminateCallback,
-                                                             nil,
-                                                             nil);
-                    portData.source = CFMessagePortCreateRunLoopSource(nil, portData.port, 0);
-                    CFRunLoopAddSource(CFRunLoopGetCurrent(),
-                                       portData.source,
-                                       kCFRunLoopCommonModes);
+                    const std::string uuid = generateUUID();
+                    printf("creating local %s\n", uuid.c_str());
+                    context.port = std::make_unique<MessagePortLocal>(uuid);
+                    context.port->onMessage([](int32_t id, const std::string& data) {
+                        });
+                    context.lua = std::make_unique<sel::State>();
+
+                    EventLoop::eventLoop()->onLoopIteration([]() {
+                            printf("iteration\n");
+                        });
+
+                    MessagePortRemote remote("jhanssen.disseminate.server");
+                    if (!remote.send(getpid(), uuid)) {
+                        printf("couldn't inform server\n");
+                        //context.port.reset();
+                        return;
+                    }
+
+                    /*sel::State state;
+                    state.LoadStr("function add(a, b)\n"
+                                  "  return a + b\n"
+                                  "end");
+                    int result = state["add"](5, 2);
+                    printf("got lua result %d\n", result);*/
                 });
         });
 }
