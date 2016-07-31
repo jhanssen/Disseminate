@@ -37,11 +37,12 @@ CFDataRef MessagePortLocal::callback(CFMessagePortRef port, SInt32 messageID,
 {
     MessagePortLocal* local = static_cast<MessagePortLocal*>(info);
     if (local->mCallback) {
-        std::string str;
+        std::vector<uint8_t> str;
         if (data) {
             const CFIndex len = CFDataGetLength(data);
             if (len > 0) {
-                str = std::string(reinterpret_cast<const char*>(CFDataGetBytePtr(data)), len);
+                str.resize(len);
+                memcpy(&str[0], CFDataGetBytePtr(data), len);
             }
         }
         local->mCallback(messageID, str);
@@ -62,12 +63,12 @@ MessagePortRemote::~MessagePortRemote()
         CFRelease(mPort);
 }
 
-bool MessagePortRemote::send(int32_t id, const std::string& data)
+bool MessagePortRemote::send(int32_t id, const std::vector<uint8_t>& data) const
 {
     if (!mPort)
         return false;
     const CFTimeInterval timeout = 10.0;
-    CFDataRef dataref = data.empty() ? nullptr : CFDataCreate(NULL, reinterpret_cast<const UInt8*>(data.c_str()), data.size() + 1);
+    CFDataRef dataref = data.empty() ? nullptr : CFDataCreate(NULL, &data[0], data.size() + 1);
     SInt32 status = CFMessagePortSendRequest(mPort,
                                              id,
                                              dataref,
@@ -78,12 +79,12 @@ bool MessagePortRemote::send(int32_t id, const std::string& data)
     return (status == kCFMessagePortSuccess);
 }
 
-bool MessagePortRemote::send(int32_t id)
+bool MessagePortRemote::send(int32_t id) const
 {
-    return send(id, std::string());
+    return send(id, std::vector<uint8_t>());
 }
 
-bool MessagePortRemote::send(const std::string& data)
+bool MessagePortRemote::send(const std::vector<uint8_t>& data) const
 {
     return send(0, data);
 }

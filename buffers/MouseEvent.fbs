@@ -1,6 +1,7 @@
 namespace Disseminate;
 
 enum Type : byte { Move, Press, Release }
+enum Button : byte { None, Left, Middle, Right }
 
 struct Location {
     x: float;
@@ -10,8 +11,9 @@ struct Location {
 table MouseEvent
 {
     type: Type;
+    button: Button;
     location: Location;
-    windownumber: int;
+    windowNumber: int;
     modifiers: ushort = 0;
     timestamp: double = 0;
     clickCount: int = 1;

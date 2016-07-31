@@ -1,6 +1,7 @@
 #ifndef MESSAGEPORT_H
 #define MESSAGEPORT_H
 
+#include <vector>
 #include <string>
 #include <functional>
 #include <CoreFoundation/CFData.h>
@@ -13,7 +14,7 @@ public:
     MessagePortLocal(const std::string& name);
     ~MessagePortLocal();
 
-    typedef std::function<void(int32_t id, const std::string& data)> Callback;
+    typedef std::function<void(int32_t id, const std::vector<uint8_t>& data)> Callback;
     void onMessage(const Callback& on) { mCallback = on; }
 
 private:
@@ -32,9 +33,9 @@ public:
     MessagePortRemote(const std::string& name);
     ~MessagePortRemote();
 
-    bool send(int32_t id);
-    bool send(int32_t id, const std::string& data);
-    bool send(const std::string& data);
+    bool send(int32_t id) const ;
+    bool send(int32_t id, const std::vector<uint8_t>& data) const;
+    bool send(const std::vector<uint8_t>& data) const;
 
 private:
     CFMessagePortRef mPort;

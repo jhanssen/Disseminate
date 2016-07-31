@@ -1,61 +1,113 @@
 #include "ScriptEngine.h"
+#include "MessagePort.h"
+#include <map>
+#include <memory>
+#include <MouseEvent_generated.h>
 #import <Cocoa/Cocoa.h>
 
 struct MouseEvent
 {
-    enum Type { Unknown, Move, Press, Release };
-    enum Button { None, Left, Middle, Right };
-
-    MouseEvent()
-        : type(Unknown), button(None), x(0), y(0), modifiers(0), clickCount(0), pressure(0)
-    {
-    }
     MouseEvent(int _type, int _button, double _x, double _y)
-        : type(static_cast<Type>(_type)),
-          button(static_cast<Button>(_button)),
-          x(_x), y(_y), modifiers(0), clickCount(0), pressure(0)
     {
+        internal.type = static_cast<Disseminate::Type>(_type);
+        internal.button = static_cast<Disseminate::Button>(_button);
+        internal.windowNumber = 0;
+        internal.modifiers = 0;
+        internal.timestamp = 0.;
+        internal.clickCount = 0;
+        internal.pressure = 0.;
+
+        internal.location = std::make_unique<Disseminate::Location>(_x, _y);
+    }
+    MouseEvent(const MouseEvent& other)
+    {
+        internal.type = other.internal.type;
+        internal.button = other.internal.button;
+        internal.windowNumber = other.internal.windowNumber;
+        internal.modifiers = other.internal.modifiers;
+        internal.timestamp = other.internal.timestamp;
+        internal.clickCount = other.internal.clickCount;
+        internal.pressure = other.internal.pressure;
+
+        if (other.internal.location) {
+            internal.location = std::make_unique<Disseminate::Location>(other.internal.location->x(), other.internal.location->y());
+        }
     }
     MouseEvent(NSEvent* event);
+    MouseEvent& operator=(const MouseEvent& other)
+    {
+        internal.type = other.internal.type;
+        internal.button = other.internal.button;
+        internal.windowNumber = other.internal.windowNumber;
+        internal.modifiers = other.internal.modifiers;
+        internal.timestamp = other.internal.timestamp;
+        internal.clickCount = other.internal.clickCount;
+        internal.pressure = other.internal.pressure;
 
-    Type type;
-    Button button;
-    double x, y;
-    unsigned short modifiers;
-    int clickCount;
-    float pressure;
+        if (other.internal.location) {
+            internal.location = std::make_unique<Disseminate::Location>(other.internal.location->x(), other.internal.location->y());
+        } else {
+            internal.location.reset();
+        }
+        return *this;
+    }
+
+    double x() { return internal.location->x(); }
+    float y() { return internal.location->y(); }
+    void setX(double x) { internal.location->mutate_x(x); }
+    void setY(double y) { internal.location->mutate_y(y); }
+
+    Disseminate::Type type() { return internal.type; }
+    void setType(Disseminate::Type arg) { internal.type = arg; }
+    Disseminate::Button button() { return internal.button; }
+    void setButton(Disseminate::Button arg) { internal.button = arg; };
+    int32_t windowNumber() { return internal.windowNumber; }
+    void setWindowNumber(int32_t arg) { internal.windowNumber = arg; };
+    uint16_t modifiers() { return internal.modifiers; }
+    void setModifiers(uint16_t arg) { internal.modifiers = arg; };
+    double timestamp() { return internal.timestamp; }
+    void setTimestamp(double arg) { internal.timestamp = arg; };
+    int32_t clickCount() { return internal.clickCount; }
+    void setClickCount(int32_t arg) { internal.clickCount = arg; };
+    double pressure() { return internal.pressure; }
+    void setPressure(double arg) { internal.pressure = arg; }
+
+    Disseminate::MouseEventT& flat() { return internal; }
+
+private:
+    Disseminate::MouseEventT internal;
 };
 
 MouseEvent::MouseEvent(NSEvent* event)
 {
     switch ([event type]) {
     case NSLeftMouseDown:
-        type = Press;
-        button = Left;
+        internal.type = Disseminate::Type_Press;
+        internal.button = Disseminate::Button_Left;
         break;
     case NSLeftMouseUp:
-        type = Release;
-        button = Left;
+        internal.type = Disseminate::Type_Release;
+        internal.button = Disseminate::Button_Left;
         break;
     case NSRightMouseDown:
-        type = Press;
-        button = Right;
+        internal.type = Disseminate::Type_Press;
+        internal.button = Disseminate::Button_Right;
         break;
     case NSRightMouseUp:
-        type = Release;
-        button = Right;
+        internal.type = Disseminate::Type_Release;
+        internal.button = Disseminate::Button_Right;
         break;
     case NSMouseMoved:
-        type = Move;
-        button = None;
+        internal.type = Disseminate::Type_Move;
+        internal.button = Disseminate::Button_None;
         break;
     case NSLeftMouseDragged:
-        type = Move;
-        button = Left;
+        internal.type = Disseminate::Type_Move;
+        internal.button = Disseminate::Button_Left;
         break;
     case NSRightMouseDragged:
-        type = Move;
-        button = Right;
+        internal.type = Disseminate::Type_Move;
+        internal.button = Disseminate::Button_Right;
         break;
     default:
         abort();
@@ -63,12 +115,13 @@ MouseEvent::MouseEvent(NSEvent* event)
     }
     {
         NSPoint location = [event locationInWindow];
-        x = location.x;
-        y = location.y;
+        internal.location = std::make_unique<Disseminate::Location>(location.x, location.y);
     }
-    modifiers = [event modifierFlags];
-    clickCount = [event clickCount];
-    pressure = [event pressure];
+    internal.modifiers = [event modifierFlags];
+    internal.clickCount = [event clickCount];
+    internal.pressure = [event pressure];
+    internal.timestamp = 0;
+    internal.windowNumber = 0;
 }
 
 namespace enums {
@@ -82,6 +135,18 @@ public:
     std::vector<sel::function<void(int, int, const std::string&)> > clientChangeFunctions;
 
     std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
+
+    std::map<std::string, std::shared_ptr<MessagePortRemote> > ports;
+
+    const std::shared_ptr<MessagePortRemote>& port(const std::string& name)
+    {
+        auto it = ports.find(name);
+        if (it != ports.end())
+            return it->second;
+        ports[name] = std::make_shared<MessagePortRemote>(name);
+        it = ports.find(name);
+        return it->second;
+    }
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -95,20 +160,27 @@ ScriptEngine::ScriptEngine()
 {
     (*state)["MouseEvent"].SetClass<MouseEvent, int, int, double, double>(
         "type", &MouseEvent::type,
+        "set_type", &MouseEvent::setType,
         "button", &MouseEvent::button,
+        "set_button", &MouseEvent::setButton,
         "x", &MouseEvent::x,
+        "set_x", &MouseEvent::setX,
         "y", &MouseEvent::y,
+        "set_y", &MouseEvent::setY,
         "modifiers", &MouseEvent::modifiers,
+        "set_modifiers", &MouseEvent::setModifiers,
         "clickCount", &MouseEvent::clickCount,
-        "pressure", &MouseEvent::pressure);
+        "set_clickCount", &MouseEvent::setClickCount,
+        "pressure", &MouseEvent::pressure,
+        "set_pressure", &MouseEvent::setPressure);
 
-    setEnum(*state, "MouseMove", MouseEvent::Move);
-    setEnum(*state, "MousePress", MouseEvent::Press);
-    setEnum(*state, "MouseRelease", MouseEvent::Release);
-    setEnum(*state, "MouseButtonNone", MouseEvent::None);
-    setEnum(*state, "MouseButtonLeft", MouseEvent::Left);
-    setEnum(*state, "MouseButtonMiddle", MouseEvent::Middle);
-    setEnum(*state, "MouseButtonRight", MouseEvent::Right);
+    setEnum(*state, "MouseMove", Disseminate::Type_Move);
+    setEnum(*state, "MousePress", Disseminate::Type_Press);
+    setEnum(*state, "MouseRelease", Disseminate::Type_Release);
+    setEnum(*state, "MouseButtonNone", Disseminate::Button_None);
+    setEnum(*state, "MouseButtonLeft", Disseminate::Button_Left);
+    setEnum(*state, "MouseButtonMiddle", Disseminate::Button_Middle);
+    setEnum(*state, "MouseButtonRight", Disseminate::Button_Right);
     setEnum(*state, "Add", enums::Add);
     setEnum(*state, "Remove", enums::Remove);
 
@@ -133,12 +205,29 @@ ScriptEngine::ScriptEngine()
         mouseEvent["on"] = [this](sel::function<bool(int, MouseEvent)> fun) {
             data->mouseEventFunctions.push_back(fun);
         };
-        mouseEvent["send"] = [](MouseEvent event) {
-            // send to all
+        mouseEvent["sendToAll"] = [this](MouseEvent event) {
+            flatbuffers::FlatBufferBuilder builder;
+            auto buffer = Disseminate::CreateMouseEvent(builder, &event.flat());
+            builder.Finish(buffer);
+            std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                         builder.GetBufferPointer() + builder.GetSize());
+
+            auto port = data->ports.cbegin();
+            const auto end = data->ports.cend();
+            while (port != end) {
+                port->second->send(message);
+                ++port;
+            }
         };
-        mouseEvent["sendTo"] = [](MouseEvent event, const std::string& to) {
+        mouseEvent["sendTo"] = [this](MouseEvent event, const std::string& to) {
             // send to specific
-            printf("remote send mouse event (%f %f) to %s (%p)\n", event.x, event.y, to.c_str(), &event);
+            const std::shared_ptr<MessagePortRemote>& port = data->port(to);
+            flatbuffers::FlatBufferBuilder builder;
+            auto buffer = Disseminate::CreateMouseEvent(builder, &event.flat());
+            builder.Finish(buffer);
+            std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                         builder.GetBufferPointer() + builder.GetSize());
+            port->send(message);
         };
         mouseEvent["inject"] = [](MouseEvent event) {
         };
@@ -162,12 +251,15 @@ ScriptEngine::ScriptEngine()
              "  return true\n"
              "end\n"
              "function acceptOtherMouseEvent(type, me)\n"
+             // "  me:set_x(100)\n"
+             // "  mouseEvent.sendTo(me, \"def\")\n"
+             // "  foobar = me\n"
+             // "  local brandnew = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 99, 55.77)\n"
+             // "  brandnew:set_x(199)\n"
+             // "  mouseEvent.sendTo(brandnew, \"brandnew\")\n"
              "  me:set_x(100)\n"
-             "  mouseEvent.sendTo(me, \"def\")\n"
-             "  foobar = me\n"
-             "  local brandnew = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 99, 55.77)\n"
-             "  brandnew:set_x(199)\n"
-             "  mouseEvent.sendTo(brandnew, \"brandnew\")\n"
+             "  mouseEvent.sendTo(me, \"530ness\")\n"
+             "  logInt(530)\n"
              "  return true\n"
              "end\n"
              "function clientChange(change, type, client)\n"

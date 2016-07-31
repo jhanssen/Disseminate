@@ -34,6 +34,18 @@ static std::string generateUUID()
     return string;
 }
 
+static inline std::string toString(const std::vector<uint8_t>& vec)
+{
+    return std::string(reinterpret_cast<const char*>(&vec[0]), vec.size());
+}
+
+static inline std::vector<uint8_t> toVector(const std::string& str)
+{
+    std::vector<uint8_t> vec(str.size());
+    memcpy(&vec[0], &str[0], str.size());
+    return vec;
+}
+
 // typedef void (*VoidSignature)(id self, SEL cmd);
 
 // static IMP sCursorSet = NULL;
@@ -117,19 +129,19 @@ static Context context;
 
                     printf("creating local %s\n", uuid.c_str());
                     context.port = std::make_unique<MessagePortLocal>(uuid);
-                    context.port->onMessage([loop](int32_t id, const std::string& data) {
+                    context.port->onMessage([loop](int32_t id, const std::vector<uint8_t>& data) {
                             switch (id) {
                             case Disseminate::FlatbufferTypes::Evaluate:
-                                context.lua->evaluate(data);
+                                context.lua->evaluate(toString(data));
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteAdd:
-                                context.lua->registerClient(ScriptEngine::Remote, data);
+                                context.lua->registerClient(ScriptEngine::Remote, toString(data));
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteRemove:
-                                context.lua->unregisterClient(ScriptEngine::Remote, data);
+                                context.lua->unregisterClient(ScriptEngine::Remote, toString(data));
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
-                                auto event = Disseminate::GetMouseEvent(data.c_str());
+                                auto event = Disseminate::GetMouseEvent(&data[0]);
                                 context.lua->processRemoteEvent(event);
                                 break; }
                             default:
@@ -143,7 +155,7 @@ static Context context;
                         });
 
                     MessagePortRemote remote("jhanssen.disseminate.server");
-                    if (!remote.send(getpid(), uuid)) {
+                    if (!remote.send(getpid(), toVector(uuid))) {
                         printf("couldn't inform server\n");
                         //context.port.reset();
                         return;
