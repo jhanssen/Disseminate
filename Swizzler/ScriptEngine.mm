@@ -107,6 +107,8 @@ public:
     double pressure() { return internal->pressure; }
     void setPressure(double arg) { detach(); internal->pressure = arg; }
 
+    MouseEvent clone() { return MouseEvent(*this); }
+
     Disseminate::MouseEventT* flat() { return internal.get(); }
 
 protected:
@@ -241,7 +243,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "clickCount", &MouseEvent::clickCount,
         "set_clickCount", &MouseEvent::setClickCount,
         "pressure", &MouseEvent::pressure,
-        "set_pressure", &MouseEvent::setPressure);
+        "set_pressure", &MouseEvent::setPressure,
+        "clone", &MouseEvent::clone);
 
     setEnum(*state, "MouseMove", Disseminate::Type_Move);
     setEnum(*state, "MousePress", Disseminate::Type_Press);
@@ -403,8 +406,14 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              // "  local brandnew = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 99, 55.77)\n"
              // "  brandnew:set_x(199)\n"
              // "  mouseEvent.sendTo(brandnew, \"brandnew\")\n"
+             "  local me2 = me:clone()\n"
+             "  local str1 = \"abchey\"\n"
+             "  local str2 = str1\n"
+             "  mouseEvent.sendTo(me2, str1)\n"
              "  me:set_x(100)\n"
-             "  mouseEvent.sendTo(me, \"530ness\")\n"
+             "  str1 = \"321\"\n"
+             "  mouseEvent.sendTo(me, str1)\n"
+             "  mouseEvent.sendTo(me2, str2)\n"
              "  logInt(530)\n"
              "  return true\n"
              "end\n"
@@ -419,7 +428,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "logInt(clients.size())\n"
              "clients.on(clientChange)\n"
              "mouseEvent.on(acceptOtherMouseEvent)\n"
-             "mouseEvent.on(acceptMouseEvent)\n");
+             //"mouseEvent.on(acceptMouseEvent)\n"
+        );
 }
 
 ScriptEngine::~ScriptEngine()
