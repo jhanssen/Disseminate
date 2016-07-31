@@ -1,5 +1,6 @@
 #include "ScriptEngine.h"
 #include "MessagePort.h"
+#include "FlatbufferTypes.h"
 #include <map>
 #include <memory>
 #include <MouseEvent_generated.h>
@@ -9,105 +10,113 @@ struct MouseEvent
 {
     MouseEvent(int _type, int _button, double _x, double _y)
     {
-        internal.type = static_cast<Disseminate::Type>(_type);
-        internal.button = static_cast<Disseminate::Button>(_button);
-        internal.windowNumber = 0;
-        internal.modifiers = 0;
-        internal.timestamp = 0.;
-        internal.clickCount = 0;
-        internal.pressure = 0.;
+        internal = std::make_unique<Disseminate::MouseEventT>();
+        internal->type = static_cast<Disseminate::Type>(_type);
+        internal->button = static_cast<Disseminate::Button>(_button);
+        internal->windowNumber = 0;
+        internal->modifiers = 0;
+        internal->timestamp = 0.;
+        internal->clickCount = 0;
+        internal->pressure = 0.;
 
-        internal.location = std::make_unique<Disseminate::Location>(_x, _y);
+        internal->location = std::make_unique<Disseminate::Location>(_x, _y);
     }
     MouseEvent(const MouseEvent& other)
     {
-        internal.type = other.internal.type;
-        internal.button = other.internal.button;
-        internal.windowNumber = other.internal.windowNumber;
-        internal.modifiers = other.internal.modifiers;
-        internal.timestamp = other.internal.timestamp;
-        internal.clickCount = other.internal.clickCount;
-        internal.pressure = other.internal.pressure;
+        internal = std::make_unique<Disseminate::MouseEventT>();
+        internal->type = other.internal->type;
+        internal->button = other.internal->button;
+        internal->windowNumber = other.internal->windowNumber;
+        internal->modifiers = other.internal->modifiers;
+        internal->timestamp = other.internal->timestamp;
+        internal->clickCount = other.internal->clickCount;
+        internal->pressure = other.internal->pressure;
 
-        if (other.internal.location) {
-            internal.location = std::make_unique<Disseminate::Location>(other.internal.location->x(), other.internal.location->y());
+        if (other.internal->location) {
+            internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
         }
     }
+    MouseEvent(std::unique_ptr<Disseminate::MouseEventT>&& unique)
+    {
+        unique = std::move(internal);
+    }
     MouseEvent(NSEvent* event);
+
     MouseEvent& operator=(const MouseEvent& other)
     {
-        internal.type = other.internal.type;
-        internal.button = other.internal.button;
-        internal.windowNumber = other.internal.windowNumber;
-        internal.modifiers = other.internal.modifiers;
-        internal.timestamp = other.internal.timestamp;
-        internal.clickCount = other.internal.clickCount;
-        internal.pressure = other.internal.pressure;
+        internal->type = other.internal->type;
+        internal->button = other.internal->button;
+        internal->windowNumber = other.internal->windowNumber;
+        internal->modifiers = other.internal->modifiers;
+        internal->timestamp = other.internal->timestamp;
+        internal->clickCount = other.internal->clickCount;
+        internal->pressure = other.internal->pressure;
 
-        if (other.internal.location) {
-            internal.location = std::make_unique<Disseminate::Location>(other.internal.location->x(), other.internal.location->y());
+        if (other.internal->location) {
+            internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
         } else {
-            internal.location.reset();
+            internal->location.reset();
         }
         return *this;
     }
 
-    double x() { return internal.location->x(); }
-    float y() { return internal.location->y(); }
-    void setX(double x) { internal.location->mutate_x(x); }
-    void setY(double y) { internal.location->mutate_y(y); }
+    double x() { return internal->location->x(); }
+    float y() { return internal->location->y(); }
+    void setX(double x) { internal->location->mutate_x(x); }
+    void setY(double y) { internal->location->mutate_y(y); }
 
-    Disseminate::Type type() { return internal.type; }
-    void setType(Disseminate::Type arg) { internal.type = arg; }
-    Disseminate::Button button() { return internal.button; }
-    void setButton(Disseminate::Button arg) { internal.button = arg; };
-    int32_t windowNumber() { return internal.windowNumber; }
-    void setWindowNumber(int32_t arg) { internal.windowNumber = arg; };
-    uint16_t modifiers() { return internal.modifiers; }
-    void setModifiers(uint16_t arg) { internal.modifiers = arg; };
-    double timestamp() { return internal.timestamp; }
-    void setTimestamp(double arg) { internal.timestamp = arg; };
-    int32_t clickCount() { return internal.clickCount; }
-    void setClickCount(int32_t arg) { internal.clickCount = arg; };
-    double pressure() { return internal.pressure; }
-    void setPressure(double arg) { internal.pressure = arg; }
+    Disseminate::Type type() { return internal->type; }
+    void setType(Disseminate::Type arg) { internal->type = arg; }
+    Disseminate::Button button() { return internal->button; }
+    void setButton(Disseminate::Button arg) { internal->button = arg; };
+    int32_t windowNumber() { return internal->windowNumber; }
+    void setWindowNumber(int32_t arg) { internal->windowNumber = arg; };
+    uint16_t modifiers() { return internal->modifiers; }
+    void setModifiers(uint16_t arg) { internal->modifiers = arg; };
+    double timestamp() { return internal->timestamp; }
+    void setTimestamp(double arg) { internal->timestamp = arg; };
+    int32_t clickCount() { return internal->clickCount; }
+    void setClickCount(int32_t arg) { internal->clickCount = arg; };
+    double pressure() { return internal->pressure; }
+    void setPressure(double arg) { internal->pressure = arg; }
 
-    Disseminate::MouseEventT& flat() { return internal; }
+    Disseminate::MouseEventT* flat() { return internal.get(); }
 
 private:
-    Disseminate::MouseEventT internal;
+    std::unique_ptr<Disseminate::MouseEventT> internal;
 };
 
 MouseEvent::MouseEvent(NSEvent* event)
 {
+    internal = std::make_unique<Disseminate::MouseEventT>();
     switch ([event type]) {
     case NSLeftMouseDown:
-        internal.type = Disseminate::Type_Press;
-        internal.button = Disseminate::Button_Left;
+        internal->type = Disseminate::Type_Press;
+        internal->button = Disseminate::Button_Left;
         break;
     case NSLeftMouseUp:
-        internal.type = Disseminate::Type_Release;
-        internal.button = Disseminate::Button_Left;
+        internal->type = Disseminate::Type_Release;
+        internal->button = Disseminate::Button_Left;
         break;
     case NSRightMouseDown:
-        internal.type = Disseminate::Type_Press;
-        internal.button = Disseminate::Button_Right;
+        internal->type = Disseminate::Type_Press;
+        internal->button = Disseminate::Button_Right;
         break;
     case NSRightMouseUp:
-        internal.type = Disseminate::Type_Release;
-        internal.button = Disseminate::Button_Right;
+        internal->type = Disseminate::Type_Release;
+        internal->button = Disseminate::Button_Right;
         break;
     case NSMouseMoved:
-        internal.type = Disseminate::Type_Move;
-        internal.button = Disseminate::Button_None;
+        internal->type = Disseminate::Type_Move;
+        internal->button = Disseminate::Button_None;
         break;
     case NSLeftMouseDragged:
-        internal.type = Disseminate::Type_Move;
-        internal.button = Disseminate::Button_Left;
+        internal->type = Disseminate::Type_Move;
+        internal->button = Disseminate::Button_Left;
         break;
     case NSRightMouseDragged:
-        internal.type = Disseminate::Type_Move;
-        internal.button = Disseminate::Button_Right;
+        internal->type = Disseminate::Type_Move;
+        internal->button = Disseminate::Button_Right;
         break;
     default:
         abort();
@@ -115,13 +124,13 @@ MouseEvent::MouseEvent(NSEvent* event)
     }
     {
         NSPoint location = [event locationInWindow];
-        internal.location = std::make_unique<Disseminate::Location>(location.x, location.y);
+        internal->location = std::make_unique<Disseminate::Location>(location.x, location.y);
     }
-    internal.modifiers = [event modifierFlags];
-    internal.clickCount = [event clickCount];
-    internal.pressure = [event pressure];
-    internal.timestamp = 0;
-    internal.windowNumber = 0;
+    internal->modifiers = [event modifierFlags];
+    internal->clickCount = [event clickCount];
+    internal->pressure = [event pressure];
+    internal->timestamp = 0;
+    internal->windowNumber = 0;
 }
 
 namespace enums {
@@ -183,6 +192,8 @@ ScriptEngine::ScriptEngine()
     setEnum(*state, "MouseButtonRight", Disseminate::Button_Right);
     setEnum(*state, "Add", enums::Add);
     setEnum(*state, "Remove", enums::Remove);
+    setEnum(*state, "Local", ScriptEngine::Local);
+    setEnum(*state, "Remote", ScriptEngine::Remote);
 
     {
         auto clients = (*state)["clients"];
@@ -207,7 +218,7 @@ ScriptEngine::ScriptEngine()
         };
         mouseEvent["sendToAll"] = [this](MouseEvent event) {
             flatbuffers::FlatBufferBuilder builder;
-            auto buffer = Disseminate::CreateMouseEvent(builder, &event.flat());
+            auto buffer = Disseminate::CreateMouseEvent(builder, event.flat());
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
@@ -215,7 +226,7 @@ ScriptEngine::ScriptEngine()
             auto port = data->ports.cbegin();
             const auto end = data->ports.cend();
             while (port != end) {
-                port->second->send(message);
+                port->second->send(Disseminate::FlatbufferTypes::MouseEvent, message);
                 ++port;
             }
         };
@@ -223,11 +234,11 @@ ScriptEngine::ScriptEngine()
             // send to specific
             const std::shared_ptr<MessagePortRemote>& port = data->port(to);
             flatbuffers::FlatBufferBuilder builder;
-            auto buffer = Disseminate::CreateMouseEvent(builder, &event.flat());
+            auto buffer = Disseminate::CreateMouseEvent(builder, event.flat());
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
-            port->send(message);
+            port->send(Disseminate::FlatbufferTypes::MouseEvent, message);
         };
         mouseEvent["inject"] = [](MouseEvent event) {
         };
@@ -313,8 +324,19 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
 }
 
-void ScriptEngine::processRemoteEvent(const Disseminate::MouseEvent* event)
+void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&& eventData)
 {
+    MouseEvent event(std::move(eventData));
+    auto on = data->mouseEventFunctions.begin();
+    const auto end = data->mouseEventFunctions.end();
+    while (on != end) {
+        MouseEvent remoteEvent(event);
+        printf("processing remote-- %p\n", &remoteEvent);
+        if (!(*on)(Remote, remoteEvent)) {
+            return;
+        }
+        ++on;
+    }
 }
 
 bool ScriptEngine::processLocalEvent(NSEvent* event)

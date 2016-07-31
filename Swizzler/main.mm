@@ -141,8 +141,8 @@ static Context context;
                                 context.lua->unregisterClient(ScriptEngine::Remote, toString(data));
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
-                                auto event = Disseminate::GetMouseEvent(&data[0]);
-                                context.lua->processRemoteEvent(event);
+                                auto event = Disseminate::GetMouseEvent(&data[0])->UnPack();
+                                context.lua->processRemoteEvent(std::move(event));
                                 break; }
                             default:
                                 break;

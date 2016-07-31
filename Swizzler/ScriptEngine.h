@@ -16,7 +16,7 @@ public:
 
     void evaluate(const std::string& code);
 
-    void processRemoteEvent(const Disseminate::MouseEvent* event);
+    void processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&& eventData);
     bool processLocalEvent(NSEvent* event);
 
     enum ClientType { Local, Remote };
