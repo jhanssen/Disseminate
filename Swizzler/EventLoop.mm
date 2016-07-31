@@ -1,11 +1,17 @@
 #include "EventLoop.h"
 #include <deque>
+#include <unordered_set>
 #include <stdio.h>
 #include <objc/runtime.h>
 #import  <Cocoa/Cocoa.h>
 
 static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sCallback;
 static std::deque<std::shared_ptr<EventLoopEvent> > sPendingEvents;
+static std::unordered_set<NSEvent*> sKnownEvents;
+static bool sProcessingPending = false;
+
+static uintptr_t ProcessPending1 = reinterpret_cast<uintptr_t>(&ProcessPending1);
+static uintptr_t ProcessPending2 = reinterpret_cast<uintptr_t>(&ProcessPending2);
 
 EventLoop* EventLoop::sEventLoop = 0;
 
@@ -39,19 +45,59 @@ static IMP sNextEventMatchingMaskImp = NULL;
 static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag)
 {
     printf("next eventing\n");
-    if (!sPendingEvents.empty()) {
-        NSEvent* event = sPendingEvents.front()->take();
-        sPendingEvents.pop_front();
-        printf("returning fake event window %lu evtno %ld\n", [event windowNumber], [event eventNumber]);
-        return event;
-    }
     NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
     NSEvent* event;
+    bool sending = false;
     for (;;) {
         event = sig(self, _cmd, mask, expiration, mode, flag);
+        if (sending)
+            return event;
+        if ([event type] == NSApplicationDefined) {
+            printf("got app defined %p\n", [event context]);
+            if ([event data1] == ProcessPending1 && [event data2] == ProcessPending2) {
+                sending = true;
+                auto it = sPendingEvents.begin();
+                const auto end = sPendingEvents.end();
+                NSApplication* app = [NSApplication sharedApplication];
+                while (it != end) {
+                    event = (*it)->take();
+                    NSPoint loc = [event locationInWindow];
+                    printf("sending fake event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
+
+                    [app sendEvent:event];
+                    ++it;
+                }
+                sPendingEvents.clear();
+                sProcessingPending = false;
+                sending = false;
+                printf("out\n");
+                // if (!sPendingEvents.empty()) {
+                //     event = sPendingEvents.front()->take();
+                //     sPendingEvents.pop_front();
+                //     NSPoint loc = [event locationInWindow];
+                //     printf("returning fake event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
+                //     return event;
+                // }
+                continue;
+            }
+        }
+        // {
+        //     auto known = sKnownEvents.find(event);
+        //     if (known != sKnownEvents.end()) {
+        //         printf("known event\n");
+        //         sKnownEvents.erase(known);
+        //         return event;
+        //     }
+        //     auto loc = [event locationInWindow];
+        //     if (loc.x > 502 && loc.x < 615)
+        //         return event;
+        // }
 #warning maybe only look at mouse/key events or give eventloop a list of wanted types?
         std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event, EventLoopEvent::None);
         if (sCallback && !sCallback(shared)) {
+            NSPoint loc = [event locationInWindow];
+            printf("blocking real event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
+            //[event release];
             continue;
         }
         break;
@@ -62,6 +108,25 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
 void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
 {
     sPendingEvents.push_back(evt);
+    // [[NSApplication sharedApplication] sendEvent:evt->take()];
+    // return;
+    if (sProcessingPending)
+        return;
+    sProcessingPending = true;
+    NSEvent* event = [NSEvent otherEventWithType: NSApplicationDefined
+                      location: NSMakePoint(0,0)
+                      modifierFlags: 0
+                      timestamp: 0.0
+                      windowNumber: 0
+                      context: 0
+                      subtype: 0
+                      data1: ProcessPending1
+                      data2: ProcessPending2];
+    [[NSApplication sharedApplication] postEvent:event atStart:YES];
+    // NSEvent* nsevt = evt->take();
+    // sKnownEvents.insert(nsevt);
+    // //[[NSApplication sharedApplication] postEvent:nsevt atStart:NO];
+    // [[NSApplication sharedApplication] sendEvent:nsevt];
 }
 
 void EventLoop::swizzle()

@@ -5,8 +5,38 @@
 #include <memory>
 #include <MouseEvent_generated.h>
 #include "CocoaUtils.h"
+#include <mach/mach_time.h>
 #import <Cocoa/Cocoa.h>
 #include "EventLoop.h"
+
+// From
+// http://stackoverflow.com/questions/1597383/cgeventtimestamp-to-nsdate
+// Which credits Apple sample code for this routine.
+static inline uint64_t UpTimeInNanoseconds(void) {
+    uint64_t time;
+    uint64_t timeNano;
+    static mach_timebase_info_data_t sTimebaseInfo;
+
+    time = mach_absolute_time();
+
+    // Convert to nanoseconds.
+
+    // If this is the first time we've run, get the timebase.
+    // We can use denom == 0 to indicate that sTimebaseInfo is
+    // uninitialised because it makes no sense to have a zero
+    // denominator is a fraction.
+    if (sTimebaseInfo.denom == 0) {
+        (void) mach_timebase_info(&sTimebaseInfo);
+    }
+
+    // This could overflow; for testing needs we probably don't care.
+    timeNano = time * sTimebaseInfo.numer / sTimebaseInfo.denom;
+    return timeNano;
+}
+
+static inline NSTimeInterval TimeIntervalSinceSystemStartup() {
+    return UpTimeInNanoseconds() / 1000000000.0;
+}
 
 struct MouseEvent
 {
@@ -67,10 +97,10 @@ struct MouseEvent
     void setX(double x) { internal->location->mutate_x(x); }
     void setY(double y) { internal->location->mutate_y(y); }
 
-    Disseminate::Type type() { return internal->type; }
-    void setType(Disseminate::Type arg) { internal->type = arg; }
-    Disseminate::Button button() { return internal->button; }
-    void setButton(Disseminate::Button arg) { internal->button = arg; };
+    int32_t type() { return internal->type; }
+    void setType(int32_t arg) { internal->type = static_cast<Disseminate::Type>(arg); }
+    int32_t button() { return internal->button; }
+    void setButton(int32_t arg) { internal->button = static_cast<Disseminate::Button>(arg); };
     int32_t windowNumber() { return internal->windowNumber; }
     void setWindowNumber(int32_t arg) { internal->windowNumber = arg; };
     uint16_t modifiers() { return internal->modifiers; }
@@ -131,8 +161,8 @@ MouseEvent::MouseEvent(NSEvent* event)
     internal->modifiers = [event modifierFlags];
     internal->clickCount = [event clickCount];
     internal->pressure = [event pressure];
-    internal->timestamp = 0;
-    internal->windowNumber = 0;
+    internal->timestamp = [event timestamp];
+    internal->windowNumber = [event windowNumber];
 }
 
 namespace enums {
@@ -142,6 +172,11 @@ enum { Add, Remove };
 class ScriptEngineData
 {
 public:
+    ScriptEngineData()
+        : eventNumber(0), eventOffset(0), timestamp(0)
+    {
+    }
+
     std::vector<sel::function<bool(int, MouseEvent)> > mouseEventFunctions;
     std::vector<sel::function<void(int, int, const std::string&)> > clientChangeFunctions;
 
@@ -166,6 +201,23 @@ public:
         if (it != ports.end())
             ports.erase(it);
     }
+
+    int32_t eventNumber;
+    int32_t eventOffset;
+    void updateEventNumber(int32_t num) { eventNumber = num; }
+    int32_t nextEvent(int32_t type)
+    {
+        switch (type) {
+        case Disseminate::Type_Press:
+            ++eventOffset;
+            break;
+        default:
+            break;
+        }
+        return eventNumber + eventOffset;
+    }
+
+    float timestamp;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -188,6 +240,8 @@ ScriptEngine::ScriptEngine()
         "set_y", &MouseEvent::setY,
         "modifiers", &MouseEvent::modifiers,
         "set_modifiers", &MouseEvent::setModifiers,
+        "windownumber", &MouseEvent::windowNumber,
+        "set_windownumber", &MouseEvent::setWindowNumber,
         "clickCount", &MouseEvent::clickCount,
         "set_clickCount", &MouseEvent::setClickCount,
         "pressure", &MouseEvent::pressure,
@@ -245,6 +299,7 @@ ScriptEngine::ScriptEngine()
             const std::shared_ptr<MessagePortRemote>& port = data->port(to);
             if (!port) {
                 // boo
+                printf("invalid port %f %f - %s\n", event.x(), event.y(), to.c_str());
                 return false;
             }
             flatbuffers::FlatBufferBuilder builder;
@@ -255,10 +310,12 @@ ScriptEngine::ScriptEngine()
             port->send(Disseminate::FlatbufferTypes::MouseEvent, message);
             return true;
         };
-        mouseEvent["inject"] = [](MouseEvent event) {
+        mouseEvent["inject"] = [this](MouseEvent event) {
             ScopedPool pool;
             NSEventType type = static_cast<NSEventType>(0);
             NSPoint location;
+            int count = 1;
+            float pressure = 1;
             switch (event.button()) {
             case Disseminate::Button_Left:
                 switch (event.type()) {
@@ -290,6 +347,8 @@ ScriptEngine::ScriptEngine()
                 }
                 break;
             case Disseminate::Button_None:
+                count = 0;
+                pressure = 0;
                 type = NSMouseMoved;
                 break;
             }
@@ -300,8 +359,8 @@ ScriptEngine::ScriptEngine()
             location.x = event.x();
             location.y = event.y();
 
-            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:0
-                            windowNumber:0 context:0 eventNumber:0 clickCount:0 pressure:0];
+            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:TimeIntervalSinceSystemStartup()
+                            windowNumber:event.windowNumber() context:0 eventNumber:0 clickCount:count pressure:pressure];
             EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
     }
@@ -315,6 +374,20 @@ ScriptEngine::ScriptEngine()
     (*state)("local foobar\n"
              "function acceptMouseEvent(type, me)\n"
              "  if me:x() > 380 then\n"
+             "    logInt(776)\n"
+             "    logInt(me:type())\n"
+             "    if me:type() == enums.MouseRelease then\n"
+             "      local move = MouseEvent.new(enums.MouseMove, enums.MouseButtonNone, 502.386719, 155.292969)\n"
+             "      move:set_windownumber(me:windownumber())\n"
+             "      mouseEvent.inject(move)\n"
+             "      local press = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 502.386719, 155.292969)\n"
+             "      press:set_windownumber(me:windownumber())\n"
+             "      mouseEvent.inject(press)\n"
+             "      local release = MouseEvent.new(enums.MouseRelease, enums.MouseButtonLeft, 502.386719, 155.292969)\n"
+             "      release:set_windownumber(me:windownumber())\n"
+             "      mouseEvent.inject(release)\n"
+             "      logInt(777)\n"
+             "    end\n"
              "    return false"
              "  end\n"
              "  mouseEvent.sendTo(me, \"abc\")\n"
@@ -408,6 +481,7 @@ void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&
 bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& event)
 {
     NSEvent* nsevent = event->evt;
+    data->timestamp = [nsevent timestamp];
     switch ([nsevent type]) {
     case NSLeftMouseDown:
     case NSLeftMouseUp:
@@ -416,6 +490,8 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged: {
+        data->updateEventNumber([nsevent eventNumber]);
+
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
