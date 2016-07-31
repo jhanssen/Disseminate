@@ -40,11 +40,31 @@ static inline NSTimeInterval timeIntervalSinceSystemStartup()
     return timeInNanoseconds() / 1000000000.0;
 }
 
-struct MouseEvent
+template<typename T>
+class Detachable
 {
+public:
+    virtual ~Detachable() { }
+
+    void detach()
+    {
+        if (internal.use_count() > 1)
+            detachInternal();
+    }
+
+protected:
+    virtual void detachInternal() = 0;
+
+protected:
+    std::shared_ptr<T> internal;
+};
+
+class MouseEvent : public Detachable<Disseminate::MouseEventT>
+{
+public:
     MouseEvent(int _type, int _button, double _x, double _y)
     {
-        internal = std::make_unique<Disseminate::MouseEventT>();
+        internal = std::make_shared<Disseminate::MouseEventT>();
         internal->type = static_cast<Disseminate::Type>(_type);
         internal->button = static_cast<Disseminate::Button>(_button);
         internal->windowNumber = 0;
@@ -55,76 +75,63 @@ struct MouseEvent
 
         internal->location = std::make_unique<Disseminate::Location>(_x, _y);
     }
-    MouseEvent(const MouseEvent& other)
+    MouseEvent(std::unique_ptr<Disseminate::MouseEventT>& unique)
     {
-        internal = std::make_unique<Disseminate::MouseEventT>();
-        internal->type = other.internal->type;
-        internal->button = other.internal->button;
-        internal->windowNumber = other.internal->windowNumber;
-        internal->modifiers = other.internal->modifiers;
-        internal->timestamp = other.internal->timestamp;
-        internal->clickCount = other.internal->clickCount;
-        internal->pressure = other.internal->pressure;
-        internal->fromUuid = other.internal->fromUuid;
-
-        if (other.internal->location) {
-            internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
-        }
-    }
-    MouseEvent(std::unique_ptr<Disseminate::MouseEventT>&& unique)
-    {
-        unique = std::move(internal);
+        internal.reset(unique.release());
     }
     MouseEvent(NSEvent* event);
 
-    MouseEvent& operator=(const MouseEvent& other)
-    {
-        internal->type = other.internal->type;
-        internal->button = other.internal->button;
-        internal->windowNumber = other.internal->windowNumber;
-        internal->modifiers = other.internal->modifiers;
-        internal->timestamp = other.internal->timestamp;
-        internal->clickCount = other.internal->clickCount;
-        internal->pressure = other.internal->pressure;
-        internal->fromUuid = other.internal->fromUuid;
-
-        if (other.internal->location) {
-            internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
-        } else {
-            internal->location.reset();
-        }
-        return *this;
-    }
-
     double x() { return internal->location->x(); }
+    void setX(double x) { detach(); internal->location->mutate_x(x); }
     float y() { return internal->location->y(); }
-    void setX(double x) { internal->location->mutate_x(x); }
-    void setY(double y) { internal->location->mutate_y(y); }
+    void setY(double y) { detach(); internal->location->mutate_y(y); }
 
     int32_t type() { return internal->type; }
-    void setType(int32_t arg) { internal->type = static_cast<Disseminate::Type>(arg); }
+    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Type>(arg); }
+
     int32_t button() { return internal->button; }
-    void setButton(int32_t arg) { internal->button = static_cast<Disseminate::Button>(arg); };
+    void setButton(int32_t arg) { detach(); internal->button = static_cast<Disseminate::Button>(arg); };
+
     int32_t windowNumber() { return internal->windowNumber; }
-    void setWindowNumber(int32_t arg) { internal->windowNumber = arg; };
+    void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
+
     uint16_t modifiers() { return internal->modifiers; }
-    void setModifiers(uint16_t arg) { internal->modifiers = arg; };
+    void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
+
     double timestamp() { return internal->timestamp; }
-    void setTimestamp(double arg) { internal->timestamp = arg; };
+    void setTimestamp(double arg) { detach(); internal->timestamp = arg; };
+
     int32_t clickCount() { return internal->clickCount; }
-    void setClickCount(int32_t arg) { internal->clickCount = arg; };
+    void setClickCount(int32_t arg) { detach(); internal->clickCount = arg; };
+
     double pressure() { return internal->pressure; }
-    void setPressure(double arg) { internal->pressure = arg; }
+    void setPressure(double arg) { detach(); internal->pressure = arg; }
 
     Disseminate::MouseEventT* flat() { return internal.get(); }
 
-private:
-    std::unique_ptr<Disseminate::MouseEventT> internal;
+protected:
+    virtual void detachInternal()
+    {
+        std::shared_ptr<Disseminate::MouseEventT> other = internal;
+        internal = std::make_shared<Disseminate::MouseEventT>();
+        internal->type = other->type;
+        internal->button = other->button;
+        internal->windowNumber = other->windowNumber;
+        internal->modifiers = other->modifiers;
+        internal->timestamp = other->timestamp;
+        internal->clickCount = other->clickCount;
+        internal->pressure = other->pressure;
+        internal->fromUuid = other->fromUuid;
+
+        if (other->location) {
+            internal->location = std::make_unique<Disseminate::Location>(other->location->x(), other->location->y());
+        }
+    }
 };
 
 MouseEvent::MouseEvent(NSEvent* event)
 {
-    internal = std::make_unique<Disseminate::MouseEventT>();
+    internal = std::make_shared<Disseminate::MouseEventT>();
     switch ([event type]) {
     case NSLeftMouseDown:
         internal->type = Disseminate::Type_Press;
@@ -456,9 +463,9 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
 }
 
-void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&& eventData)
+void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>& eventData)
 {
-    MouseEvent event(std::move(eventData));
+    MouseEvent event(eventData);
     auto on = data->mouseEventFunctions.begin();
     const auto end = data->mouseEventFunctions.end();
     while (on != end) {

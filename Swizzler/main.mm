@@ -142,7 +142,7 @@ static Context context;
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::GetMouseEvent(&data[0])->UnPack();
-                                context.lua->processRemoteEvent(std::move(event));
+                                context.lua->processRemoteEvent(event);
                                 break; }
                             default:
                                 break;
