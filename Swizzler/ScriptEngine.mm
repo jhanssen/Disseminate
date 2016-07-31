@@ -47,7 +47,7 @@ struct MouseEvent
         internal->button = static_cast<Disseminate::Button>(_button);
         internal->windowNumber = 0;
         internal->modifiers = 0;
-        internal->timestamp = 0.;
+        internal->timestamp = TimeIntervalSinceSystemStartup();
         internal->clickCount = 0;
         internal->pressure = 0.;
 
@@ -173,7 +173,6 @@ class ScriptEngineData
 {
 public:
     ScriptEngineData()
-        : eventNumber(0), eventOffset(0), timestamp(0)
     {
     }
 
@@ -201,23 +200,6 @@ public:
         if (it != ports.end())
             ports.erase(it);
     }
-
-    int32_t eventNumber;
-    int32_t eventOffset;
-    void updateEventNumber(int32_t num) { eventNumber = num; }
-    int32_t nextEvent(int32_t type)
-    {
-        switch (type) {
-        case Disseminate::Type_Press:
-            ++eventOffset;
-            break;
-        default:
-            break;
-        }
-        return eventNumber + eventOffset;
-    }
-
-    float timestamp;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -359,7 +341,7 @@ ScriptEngine::ScriptEngine()
             location.x = event.x();
             location.y = event.y();
 
-            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:TimeIntervalSinceSystemStartup()
+            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:event.timestamp()
                             windowNumber:event.windowNumber() context:0 eventNumber:0 clickCount:count pressure:pressure];
             EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
@@ -481,7 +463,6 @@ void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&
 bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& event)
 {
     NSEvent* nsevent = event->evt;
-    data->timestamp = [nsevent timestamp];
     switch ([nsevent type]) {
     case NSLeftMouseDown:
     case NSLeftMouseUp:
@@ -490,8 +471,6 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged: {
-        data->updateEventNumber([nsevent eventNumber]);
-
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
