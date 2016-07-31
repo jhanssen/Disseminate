@@ -124,7 +124,7 @@ static Context context;
 
                     const std::string uuid = generateUUID();
 
-                    context.lua = std::make_unique<ScriptEngine>();
+                    context.lua = std::make_unique<ScriptEngine>(uuid);
                     context.lua->registerClient(ScriptEngine::Local, uuid);
 
                     printf("creating local %s\n", uuid.c_str());

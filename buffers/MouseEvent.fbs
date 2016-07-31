@@ -18,6 +18,7 @@ table MouseEvent
     timestamp: double = 0;
     clickCount: int = 1;
     pressure: float = 1;
+    fromUuid: string;
 }
 
 root_type MouseEvent;

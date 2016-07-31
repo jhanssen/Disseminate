@@ -12,7 +12,8 @@
 // From
 // http://stackoverflow.com/questions/1597383/cgeventtimestamp-to-nsdate
 // Which credits Apple sample code for this routine.
-static inline uint64_t UpTimeInNanoseconds(void) {
+static inline uint64_t timeInNanoseconds(void)
+{
     uint64_t time;
     uint64_t timeNano;
     static mach_timebase_info_data_t sTimebaseInfo;
@@ -34,8 +35,9 @@ static inline uint64_t UpTimeInNanoseconds(void) {
     return timeNano;
 }
 
-static inline NSTimeInterval TimeIntervalSinceSystemStartup() {
-    return UpTimeInNanoseconds() / 1000000000.0;
+static inline NSTimeInterval timeIntervalSinceSystemStartup()
+{
+    return timeInNanoseconds() / 1000000000.0;
 }
 
 struct MouseEvent
@@ -47,7 +49,7 @@ struct MouseEvent
         internal->button = static_cast<Disseminate::Button>(_button);
         internal->windowNumber = 0;
         internal->modifiers = 0;
-        internal->timestamp = TimeIntervalSinceSystemStartup();
+        internal->timestamp = timeIntervalSinceSystemStartup();
         internal->clickCount = 0;
         internal->pressure = 0.;
 
@@ -63,6 +65,7 @@ struct MouseEvent
         internal->timestamp = other.internal->timestamp;
         internal->clickCount = other.internal->clickCount;
         internal->pressure = other.internal->pressure;
+        internal->fromUuid = other.internal->fromUuid;
 
         if (other.internal->location) {
             internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
@@ -83,6 +86,7 @@ struct MouseEvent
         internal->timestamp = other.internal->timestamp;
         internal->clickCount = other.internal->clickCount;
         internal->pressure = other.internal->pressure;
+        internal->fromUuid = other.internal->fromUuid;
 
         if (other.internal->location) {
             internal->location = std::make_unique<Disseminate::Location>(other.internal->location->x(), other.internal->location->y());
@@ -172,7 +176,8 @@ enum { Add, Remove };
 class ScriptEngineData
 {
 public:
-    ScriptEngineData()
+    ScriptEngineData(const std::string& id)
+        : uuid(id)
     {
     }
 
@@ -182,6 +187,8 @@ public:
     std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
 
     std::map<std::string, std::shared_ptr<MessagePortRemote> > ports;
+
+    std::string uuid;
 
     std::shared_ptr<MessagePortRemote> port(const std::string& name)
     {
@@ -207,9 +214,9 @@ static inline void setEnum(sel::State& state, const std::string& name, int c)
     state["enums"][name] = c;
 }
 
-ScriptEngine::ScriptEngine()
+ScriptEngine::ScriptEngine(const std::string& uuid)
     : state(std::make_unique<sel::State>()),
-      data(std::make_unique<ScriptEngineData>())
+      data(std::make_unique<ScriptEngineData>(uuid))
 {
     (*state)["MouseEvent"].SetClass<MouseEvent, int, int, double, double>(
         "type", &MouseEvent::type,
@@ -264,7 +271,9 @@ ScriptEngine::ScriptEngine()
         };
         mouseEvent["sendToAll"] = [this](MouseEvent event) {
             flatbuffers::FlatBufferBuilder builder;
-            auto buffer = Disseminate::CreateMouseEvent(builder, event.flat());
+            auto flat = event.flat();
+            flat->fromUuid = data->uuid;
+            auto buffer = Disseminate::CreateMouseEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
@@ -285,7 +294,9 @@ ScriptEngine::ScriptEngine()
                 return false;
             }
             flatbuffers::FlatBufferBuilder builder;
-            auto buffer = Disseminate::CreateMouseEvent(builder, event.flat());
+            auto flat = event.flat();
+            flat->fromUuid = data->uuid;
+            auto buffer = Disseminate::CreateMouseEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());

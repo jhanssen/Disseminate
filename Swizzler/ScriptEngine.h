@@ -12,7 +12,7 @@ class EventLoopEvent;
 class ScriptEngine
 {
 public:
-    ScriptEngine();
+    ScriptEngine(const std::string& uuid);
     ~ScriptEngine();
 
     void evaluate(const std::string& code);
