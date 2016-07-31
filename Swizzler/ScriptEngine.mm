@@ -10,7 +10,12 @@ struct MouseEvent
         : type(Unknown), button(None), x(0), y(0), modifiers(0), clickCount(0), pressure(0)
     {
     }
-
+    MouseEvent(int _type, int _button, double _x, double _y)
+        : type(static_cast<Type>(_type)),
+          button(static_cast<Button>(_button)),
+          x(_x), y(_y), modifiers(0), clickCount(0), pressure(0)
+    {
+    }
     MouseEvent(NSEvent* event);
 
     Type type;
@@ -66,7 +71,7 @@ MouseEvent::MouseEvent(NSEvent* event)
     pressure = [event pressure];
 }
 
-namespace constants {
+namespace enums {
 enum { Add, Remove };
 }
 
@@ -79,16 +84,16 @@ public:
     std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
 };
 
-static inline void setConstant(sel::State& state, const std::string& name, int c)
+static inline void setEnum(sel::State& state, const std::string& name, int c)
 {
-    state["constants"][name] = c;
+    state["enums"][name] = c;
 }
 
 ScriptEngine::ScriptEngine()
     : state(std::make_unique<sel::State>()),
       data(std::make_unique<ScriptEngineData>())
 {
-    (*state)["MouseEvent"].SetClass<MouseEvent>(
+    (*state)["MouseEvent"].SetClass<MouseEvent, int, int, double, double>(
         "type", &MouseEvent::type,
         "button", &MouseEvent::button,
         "x", &MouseEvent::x,
@@ -97,9 +102,15 @@ ScriptEngine::ScriptEngine()
         "clickCount", &MouseEvent::clickCount,
         "pressure", &MouseEvent::pressure);
 
-    setConstant(*state, "MouseMove", MouseEvent::Move);
-    setConstant(*state, "Add", constants::Add);
-    setConstant(*state, "Remove", constants::Remove);
+    setEnum(*state, "MouseMove", MouseEvent::Move);
+    setEnum(*state, "MousePress", MouseEvent::Press);
+    setEnum(*state, "MouseRelease", MouseEvent::Release);
+    setEnum(*state, "MouseButtonNone", MouseEvent::None);
+    setEnum(*state, "MouseButtonLeft", MouseEvent::Left);
+    setEnum(*state, "MouseButtonMiddle", MouseEvent::Middle);
+    setEnum(*state, "MouseButtonRight", MouseEvent::Right);
+    setEnum(*state, "Add", enums::Add);
+    setEnum(*state, "Remove", enums::Remove);
 
     {
         auto clients = (*state)["clients"];
@@ -154,6 +165,9 @@ ScriptEngine::ScriptEngine()
              "  me:set_x(100)\n"
              "  mouseEvent.sendTo(me, \"def\")\n"
              "  foobar = me\n"
+             "  local brandnew = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 99, 55.77)\n"
+             "  brandnew:set_x(199)\n"
+             "  mouseEvent.sendTo(brandnew, \"brandnew\")\n"
              "  return true\n"
              "end\n"
              "function clientChange(change, type, client)\n"
@@ -163,7 +177,7 @@ ScriptEngine::ScriptEngine()
              "  logInt(clients.size())\n"
              "  logString(clients.name(0))\n"
              "end\n"
-             "logInt(constants.MouseMove)\n"
+             "logInt(enums.MouseMove)\n"
              "logInt(clients.size())\n"
              "clients.on(clientChange)\n"
              "mouseEvent.on(acceptOtherMouseEvent)\n"
@@ -181,7 +195,7 @@ void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
     while (on != end) {
-        (*on)(constants::Add, type, uuid);
+        (*on)(enums::Add, type, uuid);
         ++on;
     }
 }
@@ -202,7 +216,7 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
     while (on != end) {
-        (*on)(constants::Remove, type, uuid);
+        (*on)(enums::Remove, type, uuid);
         ++on;
     }
 }
