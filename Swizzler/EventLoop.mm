@@ -47,15 +47,11 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     printf("next eventing\n");
     NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
     NSEvent* event;
-    bool sending = false;
     for (;;) {
         event = sig(self, _cmd, mask, expiration, mode, flag);
-        if (sending)
-            return event;
         if ([event type] == NSApplicationDefined) {
             printf("got app defined %p\n", [event context]);
             if ([event data1] == ProcessPending1 && [event data2] == ProcessPending2) {
-                sending = true;
                 auto it = sPendingEvents.begin();
                 const auto end = sPendingEvents.end();
                 NSApplication* app = [NSApplication sharedApplication];
@@ -69,29 +65,9 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                 }
                 sPendingEvents.clear();
                 sProcessingPending = false;
-                sending = false;
-                printf("out\n");
-                // if (!sPendingEvents.empty()) {
-                //     event = sPendingEvents.front()->take();
-                //     sPendingEvents.pop_front();
-                //     NSPoint loc = [event locationInWindow];
-                //     printf("returning fake event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
-                //     return event;
-                // }
                 continue;
             }
         }
-        // {
-        //     auto known = sKnownEvents.find(event);
-        //     if (known != sKnownEvents.end()) {
-        //         printf("known event\n");
-        //         sKnownEvents.erase(known);
-        //         return event;
-        //     }
-        //     auto loc = [event locationInWindow];
-        //     if (loc.x > 502 && loc.x < 615)
-        //         return event;
-        // }
 #warning maybe only look at mouse/key events or give eventloop a list of wanted types?
         std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event, EventLoopEvent::None);
         if (sCallback && !sCallback(shared)) {
@@ -108,8 +84,6 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
 void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
 {
     sPendingEvents.push_back(evt);
-    // [[NSApplication sharedApplication] sendEvent:evt->take()];
-    // return;
     if (sProcessingPending)
         return;
     sProcessingPending = true;
@@ -123,10 +97,6 @@ void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
                       data1: ProcessPending1
                       data2: ProcessPending2];
     [[NSApplication sharedApplication] postEvent:event atStart:YES];
-    // NSEvent* nsevt = evt->take();
-    // sKnownEvents.insert(nsevt);
-    // //[[NSApplication sharedApplication] postEvent:nsevt atStart:NO];
-    // [[NSApplication sharedApplication] sendEvent:nsevt];
 }
 
 void EventLoop::swizzle()
