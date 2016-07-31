@@ -227,6 +227,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
     : state(std::make_unique<sel::State>()),
       data(std::make_unique<ScriptEngineData>(uuid))
 {
+    state->HandleExceptionsPrintingToStdOut();
+
     (*state)["MouseEvent"].SetClass<MouseEvent, int, int, double, double>(
         "type", &MouseEvent::type,
         "set_type", &MouseEvent::setType,
@@ -442,6 +444,8 @@ void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
     if (type == Remote)
         data->makePort(uuid);
 
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
     while (on != end) {
@@ -465,6 +469,9 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
     if (type == Remote)
         data->removePort(uuid);
+
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
     while (on != end) {
@@ -475,6 +482,8 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
 
 void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>& eventData)
 {
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
     MouseEvent event(eventData);
     auto on = data->mouseEventFunctions.begin();
     const auto end = data->mouseEventFunctions.end();
@@ -490,6 +499,8 @@ void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&
 
 bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& event)
 {
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
     NSEvent* nsevent = event->evt;
     switch ([nsevent type]) {
     case NSLeftMouseDown:
