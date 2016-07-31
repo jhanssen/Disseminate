@@ -5,6 +5,7 @@
 #include <memory>
 #include <MouseEvent_generated.h>
 #import <Cocoa/Cocoa.h>
+#include "EventLoop.h"
 
 struct MouseEvent
 {
@@ -356,9 +357,10 @@ void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>&
     }
 }
 
-bool ScriptEngine::processLocalEvent(NSEvent* event)
+bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& event)
 {
-    switch ([event type]) {
+    NSEvent* nsevent = event->evt;
+    switch ([nsevent type]) {
     case NSLeftMouseDown:
     case NSLeftMouseUp:
     case NSRightMouseDown:
@@ -369,7 +371,7 @@ bool ScriptEngine::processLocalEvent(NSEvent* event)
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
-            MouseEvent localEvent(event);
+            MouseEvent localEvent(nsevent);
             printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
                 return false;

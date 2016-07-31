@@ -149,7 +149,7 @@ static Context context;
                             }
                         });
 
-                    loop->onEvent([](NSEvent* event) -> bool {
+                    loop->onEvent([](const std::shared_ptr<EventLoopEvent>& event) -> bool {
                             printf("iteration\n");
                             return context.lua->processLocalEvent(event);
                         });

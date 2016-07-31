@@ -4,10 +4,16 @@
 #include <objc/runtime.h>
 #import  <Cocoa/Cocoa.h>
 
-static std::function<bool(NSEvent*)> sCallback;
+static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sCallback;
 static std::deque<NSEvent*> sPendingEvents;
 
 EventLoop* EventLoop::sEventLoop = 0;
+
+EventLoopEvent::~EventLoopEvent()
+{
+    if (flg == Release)
+        [evt release];
+}
 
 EventLoop::EventLoop()
 {
@@ -37,7 +43,8 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     for (;;) {
         event = sig(self, _cmd, mask, expiration, mode, flag);
 #warning maybe only look at mouse/key events or give eventloop a list of wanted types?
-        if (sCallback && !sCallback(event)) {
+        std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event, EventLoopEvent::None);
+        if (sCallback && !sCallback(shared)) {
             continue;
         }
         break;
@@ -52,7 +59,7 @@ void EventLoop::swizzle()
     sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
 }
 
-void EventLoop::onEvent(const std::function<bool(NSEvent*)>& on)
+void EventLoop::onEvent(const std::function<bool(const std::shared_ptr<EventLoopEvent>&)>& on)
 {
     sCallback = on;
 }
