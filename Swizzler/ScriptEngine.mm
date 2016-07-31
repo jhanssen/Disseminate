@@ -147,14 +147,22 @@ public:
 
     std::map<std::string, std::shared_ptr<MessagePortRemote> > ports;
 
-    const std::shared_ptr<MessagePortRemote>& port(const std::string& name)
+    std::shared_ptr<MessagePortRemote> port(const std::string& name)
     {
         auto it = ports.find(name);
         if (it != ports.end())
             return it->second;
+        return std::shared_ptr<MessagePortRemote>();
+    }
+    void makePort(const std::string& name)
+    {
         ports[name] = std::make_shared<MessagePortRemote>(name);
-        it = ports.find(name);
-        return it->second;
+    }
+    void removePort(const std::string& name)
+    {
+        auto it = ports.find(name);
+        if (it != ports.end())
+            ports.erase(it);
     }
 };
 
@@ -230,15 +238,20 @@ ScriptEngine::ScriptEngine()
                 ++port;
             }
         };
-        mouseEvent["sendTo"] = [this](MouseEvent event, const std::string& to) {
+        mouseEvent["sendTo"] = [this](MouseEvent event, const std::string& to) -> bool {
             // send to specific
             const std::shared_ptr<MessagePortRemote>& port = data->port(to);
+            if (!port) {
+                // boo
+                return false;
+            }
             flatbuffers::FlatBufferBuilder builder;
             auto buffer = Disseminate::CreateMouseEvent(builder, event.flat());
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
             port->send(Disseminate::FlatbufferTypes::MouseEvent, message);
+            return true;
         };
         mouseEvent["inject"] = [](MouseEvent event) {
         };
@@ -294,6 +307,8 @@ ScriptEngine::~ScriptEngine()
 void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
 {
     data->clients.push_back(std::make_pair(type, uuid));
+    if (type == Remote)
+        data->makePort(uuid);
 
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
@@ -316,6 +331,8 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
             ++client;
         }
     }
+    if (type == Remote)
+        data->removePort(uuid);
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
     while (on != end) {
