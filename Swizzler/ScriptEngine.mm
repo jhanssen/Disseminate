@@ -115,19 +115,26 @@ ScriptEngine::ScriptEngine()
     setConstant(*state, "Add", constants::Add);
     setConstant(*state, "Remove", constants::Remove);
 
-    (*state)["sendMouseEvent"] = [](MouseEvent event) {
-        // send to all
-    };
-    (*state)["sendMouseEventTo"] = [](MouseEvent event, const std::string& to) {
-        // send to specific
-        printf("send mouse event (%f %f) to %s (%p)\n", event.x, event.y, to.c_str(), &event);
-    };
-    (*state)["onMouseEvent"] = [this](sel::function<bool(int, MouseEvent)> fun) {
-        data->mouseEventFunctions.push_back(fun);
-    };
     (*state)["onClientChange"] = [this](sel::function<void(int, int, const std::string&)> fun) {
         data->clientChangeFunctions.push_back(fun);
     };
+
+    {
+        auto mouseEvent = (*state)["mouseEvent"];
+        mouseEvent["on"] = [this](sel::function<bool(int, MouseEvent)> fun) {
+            data->mouseEventFunctions.push_back(fun);
+        };
+        mouseEvent["send"] = [](MouseEvent event) {
+            // send to all
+        };
+        mouseEvent["sendTo"] = [](MouseEvent event, const std::string& to) {
+            // send to specific
+            printf("remote send mouse event (%f %f) to %s (%p)\n", event.x, event.y, to.c_str(), &event);
+        };
+        mouseEvent["inject"] = [](MouseEvent event) {
+        };
+    }
+
     (*state)["hey"] = [](const std::string& str) {
         printf("hey.. %s\n", str.c_str());
     };
@@ -139,21 +146,21 @@ ScriptEngine::ScriptEngine()
              "  if me:x() > 380 then\n"
              "    return false"
              "  end\n"
-             "  sendMouseEventTo(me, \"abc\")\n"
-             "  sendMouseEventTo(foobar, \"1ghi\")\n"
+             "  mouseEvent.sendTo(me, \"abc\")\n"
+             "  mouseEvent.sendTo(foobar, \"1ghi\")\n"
              "  foobar:set_x(200)\n"
-             "  sendMouseEventTo(foobar, \"2ghi\")\n"
+             "  mouseEvent.sendTo(foobar, \"2ghi\")\n"
              "  return true\n"
              "end\n"
              "function acceptOtherMouseEvent(type, me)\n"
              "  me:set_x(100)\n"
-             "  sendMouseEventTo(me, \"def\")\n"
+             "  mouseEvent.sendTo(me, \"def\")\n"
              "  foobar = me\n"
              "  return true\n"
              "end\n"
              "hey2(constants.MouseMove)\n"
-             "onMouseEvent(acceptOtherMouseEvent)\n"
-             "onMouseEvent(acceptMouseEvent)\n");
+             "mouseEvent.on(acceptOtherMouseEvent)\n"
+             "mouseEvent.on(acceptMouseEvent)\n");
 }
 
 ScriptEngine::~ScriptEngine()
@@ -207,22 +214,14 @@ bool ScriptEngine::processLocalEvent(NSEvent* event)
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged: {
-        std::vector<MouseEvent> events;
-        events.push_back(MouseEvent(event));
-        events.push_back(MouseEvent(event));
-        events.push_back(MouseEvent(event));
-
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
-            assert(!events.empty());
-            MouseEvent localEvent = events.back();
+            MouseEvent localEvent(event);
             printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
-                events.pop_back();
                 return false;
             }
-            events.pop_back();
             ++on;
         }
         break; }
