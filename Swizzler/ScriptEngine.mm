@@ -66,16 +66,6 @@ MouseEvent::MouseEvent(NSEvent* event)
     pressure = [event pressure];
 }
 
-class Clients
-{
-public:
-    size_t size() { return vec.size(); }
-    int type(size_t pos) { return vec.at(pos).first; }
-    std::string name(size_t pos) { return vec.at(pos).second; }
-
-    std::vector<std::pair<ScriptEngine::ClientType, std::string> > vec;
-};
-
 namespace constants {
 enum { Add, Remove };
 }
@@ -86,7 +76,7 @@ public:
     std::vector<sel::function<bool(int, MouseEvent)> > mouseEventFunctions;
     std::vector<sel::function<void(int, int, const std::string&)> > clientChangeFunctions;
 
-    Clients clients;
+    std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
 };
 
 static inline void setConstant(sel::State& state, const std::string& name, int c)
@@ -106,18 +96,26 @@ ScriptEngine::ScriptEngine()
         "modifiers", &MouseEvent::modifiers,
         "clickCount", &MouseEvent::clickCount,
         "pressure", &MouseEvent::pressure);
-    (*state)["clients"].SetObj(data->clients,
-                               "size", &Clients::size,
-                               "type", &Clients::type,
-                               "name", &Clients::name);
 
     setConstant(*state, "MouseMove", MouseEvent::Move);
     setConstant(*state, "Add", constants::Add);
     setConstant(*state, "Remove", constants::Remove);
 
-    (*state)["onClientChange"] = [this](sel::function<void(int, int, const std::string&)> fun) {
-        data->clientChangeFunctions.push_back(fun);
-    };
+    {
+        auto clients = (*state)["clients"];
+        clients["size"] = [this]() -> int {
+            return data->clients.size();
+        };
+        clients["type"] = [this](int pos) -> int {
+            return data->clients.at(pos).first;
+        };
+        clients["name"] = [this](int pos) {
+            return data->clients.at(pos).second;
+        };
+        clients["on"] = [this](sel::function<void(int, int, const std::string&)> fun) {
+            data->clientChangeFunctions.push_back(fun);
+        };
+    }
 
     {
         auto mouseEvent = (*state)["mouseEvent"];
@@ -135,11 +133,11 @@ ScriptEngine::ScriptEngine()
         };
     }
 
-    (*state)["hey"] = [](const std::string& str) {
-        printf("hey.. %s\n", str.c_str());
+    (*state)["logString"] = [](const std::string& str) {
+        printf("logString -- '%s'\n", str.c_str());
     };
-    (*state)["hey2"] = [](int i) {
-        printf("hey2.. %d\n", i);
+    (*state)["logInt"] = [](int i) {
+        printf("logInt -- %d\n", i);
     };
     (*state)("local foobar\n"
              "function acceptMouseEvent(type, me)\n"
@@ -158,7 +156,16 @@ ScriptEngine::ScriptEngine()
              "  foobar = me\n"
              "  return true\n"
              "end\n"
-             "hey2(constants.MouseMove)\n"
+             "function clientChange(change, type, client)\n"
+             "  logString(client)\n"
+             "  logInt(change)\n"
+             "  logInt(type)\n"
+             "  logInt(clients.size())\n"
+             "  logString(clients.name(0))\n"
+             "end\n"
+             "logInt(constants.MouseMove)\n"
+             "logInt(clients.size())\n"
+             "clients.on(clientChange)\n"
              "mouseEvent.on(acceptOtherMouseEvent)\n"
              "mouseEvent.on(acceptMouseEvent)\n");
 }
@@ -169,7 +176,7 @@ ScriptEngine::~ScriptEngine()
 
 void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
 {
-    data->clients.vec.push_back(std::make_pair(type, uuid));
+    data->clients.push_back(std::make_pair(type, uuid));
 
     auto on = data->clientChangeFunctions.begin();
     const auto end = data->clientChangeFunctions.end();
@@ -182,11 +189,11 @@ void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
 void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
 {
     {
-        auto client = data->clients.vec.begin();
-        const auto end = data->clients.vec.end();
+        auto client = data->clients.begin();
+        const auto end = data->clients.end();
         while (client != end) {
             if (client->first == type && client->second == uuid) {
-                data->clients.vec.erase(client);
+                data->clients.erase(client);
                 break;
             }
             ++client;
