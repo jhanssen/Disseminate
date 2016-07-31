@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <MouseEvent_generated.h>
+#include "CocoaUtils.h"
 #import <Cocoa/Cocoa.h>
 #include "EventLoop.h"
 
@@ -255,6 +256,53 @@ ScriptEngine::ScriptEngine()
             return true;
         };
         mouseEvent["inject"] = [](MouseEvent event) {
+            ScopedPool pool;
+            NSEventType type = static_cast<NSEventType>(0);
+            NSPoint location;
+            switch (event.button()) {
+            case Disseminate::Button_Left:
+                switch (event.type()) {
+                case Disseminate::Type_Press:
+                    type = NSLeftMouseDown;
+                    break;
+                case Disseminate::Type_Release:
+                    type = NSLeftMouseUp;
+                    break;
+                case Disseminate::Type_Move:
+                    type = NSLeftMouseDragged;
+                    break;
+                }
+                break;
+           case Disseminate::Button_Middle:
+#warning handle me
+                break;
+            case Disseminate::Button_Right:
+                switch (event.type()) {
+                case Disseminate::Type_Press:
+                    type = NSRightMouseDown;
+                    break;
+                case Disseminate::Type_Release:
+                    type = NSRightMouseUp;
+                    break;
+                case Disseminate::Type_Move:
+                    type = NSRightMouseDragged;
+                    break;
+                }
+                break;
+            case Disseminate::Button_None:
+                type = NSMouseMoved;
+                break;
+            }
+            if (!type) {
+                printf("no valid event type\n");
+                return;
+            }
+            location.x = event.x();
+            location.y = event.y();
+
+            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:0
+                            windowNumber:0 context:0 eventNumber:0 clickCount:0 pressure:0];
+            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
     }
 

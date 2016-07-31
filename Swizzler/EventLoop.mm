@@ -5,13 +5,20 @@
 #import  <Cocoa/Cocoa.h>
 
 static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sCallback;
-static std::deque<NSEvent*> sPendingEvents;
+static std::deque<std::shared_ptr<EventLoopEvent> > sPendingEvents;
 
 EventLoop* EventLoop::sEventLoop = 0;
 
+EventLoopEvent::EventLoopEvent(NSEvent* event, Flag flag)
+    : evt(event), flg(flag)
+{
+    if (flg == Retain)
+        [evt retain];
+}
+
 EventLoopEvent::~EventLoopEvent()
 {
-    if (flg == Release)
+    if (evt && flg == Retain)
         [evt release];
 }
 
@@ -33,7 +40,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
 {
     printf("next eventing\n");
     if (!sPendingEvents.empty()) {
-        NSEvent* event = sPendingEvents.front();
+        NSEvent* event = sPendingEvents.front()->take();
         sPendingEvents.pop_front();
         printf("returning fake event window %lu evtno %ld\n", [event windowNumber], [event eventNumber]);
         return event;
@@ -50,6 +57,11 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         break;
     }
     return event;
+}
+
+void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
+{
+    sPendingEvents.push_back(evt);
 }
 
 void EventLoop::swizzle()

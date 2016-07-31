@@ -8,12 +8,11 @@
 class EventLoopEvent
 {
 public:
-    enum Flag { None, Release };
-    EventLoopEvent(NSEvent* event, Flag flag)
-        : evt(event), flg(flag)
-    {
-    }
+    enum Flag { None, Retain };
+    EventLoopEvent(NSEvent* event, Flag flag);
     ~EventLoopEvent();
+
+    NSEvent* take() { NSEvent* e = evt; evt = 0; return e; }
 
     NSEvent* evt;
     Flag flg;
