@@ -8,7 +8,9 @@ include(ExternalProject)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-set(SOURCES main.mm MessagePort.mm EventLoop.mm ScriptEngine.mm)
+set(COMMON_INCLUDE_DIR "../common")
+
+set(SOURCES main.mm ../common/MessagePort.mm EventLoop.mm ScriptEngine.mm)
 
 find_library(COCOA_FOUNDATION Foundation)
 find_library(COCOA_APPKIT AppKit)
@@ -34,5 +36,5 @@ find_library(LUA_LIBRARY lua HINTS ${CMAKE_BINARY_DIR}/externals/lua/lib)
 find_path(LUA_INCLUDE_DIR lua.h HINTS ${CMAKE_BINARY_DIR}/externals/lua/include)
 
 add_library(Swizzler SHARED ${SOURCES})
-include_directories(${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_LIST_DIR}/Selene/include)
+include_directories(${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_LIST_DIR}/Selene/include ${COMMON_INCLUDE_DIR})
 target_link_libraries(Swizzler ${COCOA_FOUNDATION} ${COCOA_APPKIT} ${LUA_LIBRARY} ${FLATBUFFERS_LIBRARY})

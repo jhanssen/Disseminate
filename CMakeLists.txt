@@ -9,7 +9,7 @@ endif()
 add_subdirectory(flatbuffers)
 
 find_library(FLATBUFFERS_LIBRARY flatbuffers HINTS ${CMAKE_BINARY_DIR}/flatbuffers)
-include_directories(flatbuffers/include buffers)
+include_directories(flatbuffers/include buffers common)
 
 add_subdirectory(Swizzler)
 
@@ -51,6 +51,7 @@ set(SOURCES
     Preferences.cpp
     Templates.cpp
     TemplateChooser.cpp
+    common/MessagePort.mm
     ${ICONS_QRC}
     )
 
