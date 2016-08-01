@@ -24,30 +24,6 @@
 #include <string>
 
 namespace broadcast {
-void addWindow(uint64_t window);
-void removeWindow(uint64_t window);
-void clearWindows();
-
-enum KeyType { WhiteList, BlackList };
-void setKeyType(KeyType type);
-void addKey(int64_t key, uint64_t mask);
-void removeKey(int64_t key, uint64_t mask);
-void clearKeys();
-
-void setKeyTypeForWindow(uint64_t psn, KeyType type);
-void addKeyForWindow(uint64_t psn, int64_t key, uint64_t mask);
-void clearKeysForWindow(uint64_t psn);
-
-void addActiveWindowExclusion(int64_t key, uint64_t mask);
-void clearActiveWindowExclusions();
-
-enum Binding { Keyboard, Mouse };
-void setBinding(Binding binding, int64_t key, uint64_t mask);
-void clearBinding(Binding binding);
-
-bool start();
-void stop();
-
 bool startReadKey(const std::function<void(int64_t, uint64_t)>& func);
 void stopReadKey();
 

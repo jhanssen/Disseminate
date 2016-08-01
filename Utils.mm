@@ -17,8 +17,6 @@
 */
 
 #include "Utils.h"
-#include <vector>
-#include <unordered_map>
 #include <assert.h>
 #include <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
@@ -40,39 +38,6 @@ static void log(const char* format, ...)
     fwrite("\n", 1, 2, logfile);
 }
 
-static bool equalsPsn(const ProcessSerialNumber& p1, const ProcessSerialNumber& p2)
-{
-    return p1.highLongOfPSN == p2.highLongOfPSN && p1.lowLongOfPSN == p2.lowLongOfPSN;
-}
-
-struct LocalWindow;
-
-struct PSN
-{
-    ProcessSerialNumber psn;
-    uint64_t intpsn;
-};
-
-struct Source
-{
-    PSN psn;
-    CFMachPortRef tap;
-    CFRunLoopSourceRef source;
-    LocalWindow* local;
-};
-
-struct Windows
-{
-    std::vector<PSN> psns;
-    std::vector<Source> sources;
-};
-
-struct LocalWindow
-{
-    PSN psn;
-    Windows* windows;
-};
-
 struct ReadKey
 {
     CFMachPortRef tap;
@@ -80,50 +45,7 @@ struct ReadKey
     std::function<void(int64_t, uint64_t)> func;
 };
 
-struct KeyList
-{
-    broadcast::KeyType type;
-    std::unordered_map<int64_t, std::vector<uint64_t> > keys;
-};
-
-static Windows windows;
 static ReadKey readKey = { nullptr, nullptr, nullptr };
-static KeyList keyList = { broadcast::WhiteList, std::unordered_map<int64_t, std::vector<uint64_t> >() };
-static std::unordered_map<uint64_t, KeyList> windowKeyList;
-static std::unordered_map<int64_t, std::vector<uint64_t> > exclusions;
-
-static bool broadcastingKeys = true;
-static std::pair<int64_t, uint64_t> globalKey = { 0, 0 };
-
-void broadcast::addWindow(uint64_t window)
-{
-    ProcessSerialNumber psn;
-    psn.highLongOfPSN = window >> 32;
-    psn.lowLongOfPSN = window & 0x00000000FFFFFFFFLLU;
-    windows.psns.push_back({ psn, window });
-}
-
-void broadcast::removeWindow(uint64_t window)
-{
-    ProcessSerialNumber psn;
-    psn.highLongOfPSN = window >> 32;
-    psn.lowLongOfPSN = window & 0x00000000FFFFFFFFLLU;
-    auto it = windows.psns.begin();
-    const auto& end = windows.psns.cend();
-    while (it != end) {
-        if (equalsPsn(it->psn, psn)) {
-            windows.psns.erase(it);
-            return;
-        }
-        ++it;
-    }
-}
-
-void broadcast::clearWindows()
-{
-    assert(windows.sources.empty());
-    windows.psns.clear();
-}
 
 static ProcessSerialNumber activePSN()
 {
@@ -135,90 +57,6 @@ static ProcessSerialNumber activePSN()
     psn.lowLongOfPSN = [[currentAppInfo objectForKey:@"NSApplicationProcessSerialNumberLow"] longValue];
     psn.highLongOfPSN = [[currentAppInfo objectForKey:@"NSApplicationProcessSerialNumberHigh"] longValue];
     return psn;
-}
-
-static inline bool allowKey(const KeyList& keyList, int64_t virt, CGEventFlags flags)
-{
-    const auto keyit = keyList.keys.find(virt);
-    switch (keyList.type) {
-    case broadcast::WhiteList: {
-        if (keyit == keyList.keys.end())
-            return false;
-        const auto& vec = keyit->second;
-        if (std::find(vec.begin(), vec.end(), flags) == vec.end())
-            return false;
-        break; }
-    case broadcast::BlackList: {
-        if (keyit == keyList.keys.end())
-            break;
-        const auto& vec = keyit->second;
-        if (std::find(vec.begin(), vec.end(), flags) == vec.end())
-            break;
-        return false; }
-    }
-    return true;
-}
-
-static inline bool excluded(int64_t virt, CGEventFlags flags)
-{
-    const auto eit = exclusions.find(virt);
-    if (eit == exclusions.end())
-        return false;
-    const auto& vec = eit->second;
-    if (std::find(vec.begin(), vec.end(), flags) == vec.end())
-        return false;
-    return true;
-}
-
-static inline bool checkBinding(const std::pair<int64_t, uint64_t>& c, int64_t virt, CGEventFlags flags)
-{
-    return (c.first == virt && c.second == flags);
-}
-
-CGEventRef broadcastCGEventCallback(CGEventTapProxy /*proxy*/,
-                                    CGEventType type,
-                                    CGEventRef event,
-                                    void *refcon)
-{
-    LocalWindow* local = static_cast<LocalWindow*>(refcon);
-    if (!equalsPsn(local->psn.psn, activePSN()))
-        return event;
-    if(type == NX_KEYDOWN || type == NX_KEYUP) {
-        const int64_t virt = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-        const CGEventFlags flags = CGEventGetFlags(event);
-
-        if (checkBinding(globalKey, virt, flags)) {
-            if (type == NX_KEYUP) {
-                broadcastingKeys = !broadcastingKeys;
-            }
-            return 0;
-        }
-
-        if (!broadcastingKeys)
-            return event;
-
-        if (!allowKey(keyList, virt, flags)) {
-            if (excluded(virt, flags))
-                return 0;
-            return event;
-        }
-        for (auto& source : windows.sources) {
-            if (!equalsPsn(local->psn.psn, source.psn.psn)) {
-                const auto windowList = windowKeyList.find(source.psn.intpsn);
-                if (windowList != windowKeyList.end()) {
-                    if (!allowKey(windowList->second, virt, flags))
-                        continue;
-                }
-                //CGEventRef copy = CGEventCreateCopy(event);
-                CGEventPostToPSN(&source.psn, event);
-            }
-        }
-        if (excluded(virt, flags))
-            return 0;
-    }
-
-   // send event to next application
-    return event;
 }
 
 CGEventRef readkeyCGEventCallback(CGEventTapProxy /*proxy*/,
@@ -236,50 +74,6 @@ CGEventRef readkeyCGEventCallback(CGEventTapProxy /*proxy*/,
     }
 
     return event;
-}
-
-bool broadcast::start()
-{
-    stop();
-
-    CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
-
-    CGEventMask interestedEvents = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
-    for (auto& psn : windows.psns) {
-        LocalWindow* local = new LocalWindow;
-        local->windows = &windows;
-        local->psn = psn;
-
-        CFMachPortRef eventTap = CGEventTapCreateForPSN(&psn, kCGHeadInsertEventTap,
-                                                        kCGEventTapOptionDefault, interestedEvents, broadcastCGEventCallback, local);
-        if (!eventTap)
-            return false;
-        // by passing self as last argument, you can later send events to this class instance
-
-        CFRunLoopSourceRef source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
-        CFRunLoopAddSource(runloop, source, kCFRunLoopCommonModes);
-
-        windows.sources.push_back({ psn, eventTap, source, local });
-    }
-
-    broadcastingKeys = true;
-
-    return true;
-}
-
-void broadcast::stop()
-{
-    CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
-    for (auto& source : windows.sources) {
-        CFRunLoopRemoveSource(runloop, source.source, kCFRunLoopCommonModes);
-        CFRelease(source.source);
-        CFMachPortInvalidate(source.tap);
-        CFRelease(source.tap);
-    }
-    for (auto& source : windows.sources) {
-        delete source.local;
-    }
-    windows.sources.clear();
 }
 
 bool broadcast::startReadKey(const std::function<void(int64_t, uint64_t)>& func)
@@ -309,33 +103,6 @@ void broadcast::stopReadKey()
         CFRelease(readKey.tap);
         readKey = { nullptr, nullptr, nullptr };
     }
-}
-
-void broadcast::setKeyType(KeyType type)
-{
-    keyList.type = type;
-}
-
-void broadcast::addKey(int64_t key, uint64_t mask)
-{
-    keyList.keys[key].push_back(mask);
-}
-
-void broadcast::removeKey(int64_t key, uint64_t mask)
-{
-    auto it = keyList.keys.find(key);
-    assert(it != keyList.keys.end());
-    auto& vec = it->second;
-    auto vit = std::find(vec.begin(), vec.end(), mask);
-    assert(vit != vec.end());
-    vec.erase(vit);
-    if (vec.empty())
-        keyList.keys.erase(it);
-}
-
-void broadcast::clearKeys()
-{
-    keyList.keys.clear();
 }
 
 std::string broadcast::keyToString(int64_t key)
@@ -617,67 +384,6 @@ std::string broadcast::maskToString(uint64_t mask)
     return m;
 }
 
-void broadcast::setKeyTypeForWindow(uint64_t psn, KeyType type)
-{
-    auto& keyList = windowKeyList[psn];
-    keyList.type = type;
-}
-
-void broadcast::addKeyForWindow(uint64_t psn, int64_t key, uint64_t mask)
-{
-    auto& keyList = windowKeyList[psn];
-    keyList.keys[key].push_back(mask);
-}
-
-void broadcast::clearKeysForWindow(uint64_t psn)
-{
-    auto it = windowKeyList.find(psn);
-    if (it != windowKeyList.end())
-        windowKeyList.erase(it);
-}
-
-void broadcast::addActiveWindowExclusion(int64_t key, uint64_t mask)
-{
-    exclusions[key].push_back(mask);
-}
-
-void broadcast::clearActiveWindowExclusions()
-{
-    exclusions.clear();
-}
-
-void broadcast::setBinding(Binding binding, int64_t key, uint64_t mask)
-{
-    std::pair<int64_t, uint64_t>* b = 0;
-    switch (binding) {
-    case Keyboard:
-        b = &globalKey;
-        break;
-    default:
-        break;
-    }
-    if (b) {
-        b->first = key;
-        b->second = mask;
-    }
-}
-
-void broadcast::clearBinding(Binding binding)
-{
-    std::pair<int64_t, uint64_t>* b = 0;
-    switch (binding) {
-    case Keyboard:
-        b = &globalKey;
-        break;
-    default:
-        break;
-    }
-    if (b) {
-        b->first = 0;
-        b->second = 0;
-    }
-}
-
 void broadcast::cleanup()
 {
     if (logfile) {
@@ -685,7 +391,6 @@ void broadcast::cleanup()
         logfile = 0;
     }
 }
-
 
 broadcast::Accessible broadcast::checkAllowsAccessibility()
 {

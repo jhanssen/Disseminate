@@ -78,7 +78,7 @@ Disseminate::Disseminate(QWidget *parent) :
 
 Disseminate::~Disseminate()
 {
-    broadcast::stop();
+    //broadcast::stop();
     broadcast::cleanup();
     delete ui;
 }
@@ -91,10 +91,11 @@ void Disseminate::startBroadcast()
         QMessageBox::information(this, "No windows to broadcast", "Add at least two windows before broadcasting");
         return;
     }
-    if (!broadcast::start()) {
-        QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
-        return;
-    }
+#warning implement me
+    // if (!broadcast::start()) {
+    //     QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
+    //     return;
+    // }
     broadcasting = true;
     ui->actionStart->setEnabled(false);
     ui->actionStop->setEnabled(true);
@@ -106,7 +107,8 @@ void Disseminate::stopBroadcast()
         return;
     ui->actionStart->setEnabled(true);
     ui->actionStop->setEnabled(false);
-    broadcast::stop();
+#warning implement me
+    //broadcast::stop();
     broadcasting = false;
 }
 
@@ -126,7 +128,8 @@ void Disseminate::removeKey()
     const auto& items = ui->keyList->selectedItems();
     for (auto& item : items) {
         const KeyItem* kitem = static_cast<const KeyItem*>(item);
-        broadcast::removeKey(kitem->key, kitem->mask);
+        //broadcast::removeKey(kitem->key, kitem->mask);
+#warning implement me
         delete item;
     }
 
@@ -138,7 +141,8 @@ void Disseminate::keyAdded(int64_t key, uint64_t mask)
     const QString name = helpers::keyToQString(key, mask);
     if (!helpers::contains(ui->keyList, name)) {
         ui->keyList->addItem(new KeyItem(name, key, mask));
-        broadcast::addKey(key, mask);
+        //broadcast::addKey(key, mask);
+#warning implement me
 
         saveConfig();
     }
@@ -147,7 +151,9 @@ void Disseminate::keyAdded(int64_t key, uint64_t mask)
 void Disseminate::whiteListChanged()
 {
     if (ui->whitelistRadio->isChecked()) {
-        broadcast::setKeyType(broadcast::WhiteList);
+        //broadcast::setKeyType(broadcast::WhiteList);
+#warning implement me
+
         saveConfig();
     }
 }
@@ -155,7 +161,9 @@ void Disseminate::whiteListChanged()
 void Disseminate::blackListChanged()
 {
     if (ui->blacklistRadio->isChecked()) {
-        broadcast::setKeyType(broadcast::BlackList);
+        //broadcast::setKeyType(broadcast::BlackList);
+#warning implement me
+
         saveConfig();
     }
 }
@@ -200,7 +208,9 @@ void Disseminate::loadConfig()
         prefs.automaticWindows.append(str);
     }
 
-    broadcast::clearKeys();
+    //broadcast::clearKeys();
+#warning implement me
+
     ui->keyList->clear();
 
     const QList<QVariant> keys = settings.value("keys").toList();
@@ -214,7 +224,9 @@ void Disseminate::loadConfig()
                 const QString name = helpers::keyToQString(k, m);
                 if (!helpers::contains(ui->keyList, name)) {
                     ui->keyList->addItem(new KeyItem(name, k, m));
-                    broadcast::addKey(k, m);
+                    //broadcast::addKey(k, m);
+#warning implement me
+
                 }
             }
         }
@@ -223,11 +235,15 @@ void Disseminate::loadConfig()
     if (settings.value("keyType").toString() != "blacklist") {
         ui->whitelistRadio->setChecked(true);
         ui->blacklistRadio->setChecked(false);
-        broadcast::setKeyType(broadcast::WhiteList);
+        //broadcast::setKeyType(broadcast::WhiteList);
+#warning implement me
+
     } else {
         ui->whitelistRadio->setChecked(false);
         ui->blacklistRadio->setChecked(true);
-        broadcast::setKeyType(broadcast::BlackList);
+        //broadcast::setKeyType(broadcast::BlackList);
+#warning implement me
+
     }
 
     temps.clear();
@@ -382,6 +398,9 @@ void Disseminate::reloadClients()
 
 void Disseminate::updateBindings()
 {
+#warning implement me
+
+    /*
     if (helpers::keyIsNull(prefs.globalKey))
         broadcast::clearBinding(broadcast::Keyboard);
     else
@@ -395,7 +414,8 @@ void Disseminate::updateBindings()
     broadcast::clearActiveWindowExclusions();
     for (const auto& ex : prefs.exclusions) {
         broadcast::addActiveWindowExclusion(ex.first, ex.second);
-    }
+        }
+    */
 }
 
 void Disseminate::clientDoubleClicked(QListWidgetItem* item)
