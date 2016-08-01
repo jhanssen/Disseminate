@@ -31,7 +31,8 @@ Disseminate::Disseminate(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Disseminate),
     selector(0),
-    broadcasting(false)
+    broadcasting(false),
+    messagePort("jhanssen.disseminate.server")
 {
     ui->setupUi(this);
 
@@ -62,6 +63,20 @@ Disseminate::Disseminate(QWidget *parent) :
                 QMessageBox::warning(this, "Accessibility permissions required",
                                      "Disemminate requires accessibility permissions, you might need to enable this in system preferences");
             }
+        });
+
+    messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
+            const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
+            printf("got message %d -> %s\n", id, name.c_str());
+            auto remote = std::make_shared<MessagePortRemote>(name);
+            std::weak_ptr<MessagePortRemote> weak = remote;
+            remote->onInvalidated([this, id, weak]() {
+                    if (auto shared = weak.lock()) {
+                        printf("invalidated port\n");
+                        remotePorts.erase(id);
+                    }
+                });
+            remotePorts[id] = remote;
         });
 }
 

@@ -166,9 +166,9 @@ static Context context;
                         //context.port.reset();
                         return;
                     }
-                    loop->onTerminate([&remote]() {
-                            remote.send(getpid());
-                        });
+                    // loop->onTerminate([&remote]() {
+                    //         remote.send(getpid());
+                    //     });
 
 
                     /*sel::State state;

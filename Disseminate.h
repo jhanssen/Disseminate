@@ -24,6 +24,8 @@
 #include "WindowSelector.h"
 #include "Preferences.h"
 #include "Templates.h"
+#include "MessagePort.h"
+#include <memory>
 
 namespace Ui {
 class Disseminate;
@@ -79,6 +81,9 @@ private:
     Preferences::Config prefs;
     Templates::Config temps;
     QMap<uint64_t, QString> chosenTemplates;
+
+    MessagePortLocal messagePort;
+    std::map<int32_t, std::shared_ptr<MessagePortRemote> > remotePorts;
 };
 
 #endif // DISSEMINATE_H
