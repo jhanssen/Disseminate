@@ -21,7 +21,7 @@ public:
     }
 };
 
-static inline double makeWhen(uint32_t when)
+static inline double makeInterval(uint32_t when)
 {
     ScopedPool pool;
     NSTimeInterval seconds = when / 1000.;
@@ -88,8 +88,8 @@ static inline void fireTimers()
     const auto iend = remakes.end();
     while (iit != iend) {
         if (auto shared = iit->second.lock()) {
-            const double at = makeWhen(EventLoopHack::when(shared.get()));
-            sTimers[at].push_back(std::make_pair(iit->first, iit->second));
+            const double interval = makeInterval(EventLoopHack::when(shared.get()));
+            sTimers[interval].push_back(std::make_pair(iit->first, iit->second));
         }
         ++iit;
     }
@@ -230,9 +230,9 @@ std::shared_ptr<EventLoopTimer> EventLoop::makeTimer()
 
 void EventLoop::startTimer(uint32_t when, EventLoopTimer::Type type, const std::shared_ptr<EventLoopTimer>& timer)
 {
-    const double at = makeWhen(when);
-    sTimers[at].push_back(std::make_pair(type, timer));
-    timer->interval = at;
+    const double interval = makeInterval(when);
+    sTimers[interval].push_back(std::make_pair(type, timer));
+    timer->interval = interval;
     timer->when = when;
 }
 

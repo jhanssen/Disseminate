@@ -533,6 +533,7 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
+#warning think I can move this out of the loop now that MouseEvent are copy-on-write
             MouseEvent localEvent(nsevent);
             printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
