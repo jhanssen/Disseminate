@@ -232,12 +232,13 @@ void EventLoop::startTimer(uint32_t when, EventLoopTimer::Type type, const std::
 {
     const double at = makeWhen(when);
     sTimers[at].push_back(std::make_pair(type, timer));
+    timer->interval = at;
     timer->when = when;
 }
 
 bool EventLoop::stopTimer(const std::shared_ptr<EventLoopTimer>& timer)
 {
-    auto& vec = sTimers[timer->when];
+    auto& vec = sTimers[timer->interval];
     if (vec.empty())
         return false;
     auto t = vec.begin();
@@ -246,7 +247,7 @@ bool EventLoop::stopTimer(const std::shared_ptr<EventLoopTimer>& timer)
             if (shared == timer) {
                 vec.erase(t);
                 if (vec.empty())
-                    sTimers.erase(timer->when);
+                    sTimers.erase(timer->interval);
                 return true;
             }
             ++t;
@@ -255,12 +256,12 @@ bool EventLoop::stopTimer(const std::shared_ptr<EventLoopTimer>& timer)
         }
     }
     if (vec.empty())
-        sTimers.erase(timer->when);
+        sTimers.erase(timer->interval);
     return false;
 }
 
 EventLoopTimer::EventLoopTimer(EventLoop* l)
-    : loop(l), when(0.)
+    : loop(l), interval(0.), when(0)
 {
 }
 

@@ -42,6 +42,7 @@ private:
 private:
     EventLoop* loop;
     std::function<void()> callback;
+    double interval;
     uint32_t when;
 
     friend class EventLoopHack;
