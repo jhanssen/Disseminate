@@ -58,6 +58,7 @@ public:
     //void addEvent(Event&& event);
 
     void onEvent(const std::function<bool(const std::shared_ptr<EventLoopEvent>&)>& on);
+    void onTerminate(const std::function<void()>& on);
     void postEvent(const std::shared_ptr<EventLoopEvent>& evt);
 
     void wakeup();

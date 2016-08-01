@@ -159,12 +159,17 @@ static Context context;
                         });
                     loop->wakeup();
 
+                    const pid_t pid = getpid();
                     MessagePortRemote remote("jhanssen.disseminate.server");
-                    if (!remote.send(getpid(), toVector(uuid))) {
+                    if (!remote.send(pid, toVector(uuid))) {
                         printf("couldn't inform server\n");
                         //context.port.reset();
                         return;
                     }
+                    loop->onTerminate([&remote]() {
+                            remote.send(getpid());
+                        });
+
 
                     /*sel::State state;
                     state.LoadStr("function add(a, b)\n"

@@ -6,7 +6,8 @@
 #include "CocoaUtils.h"
 #import  <Cocoa/Cocoa.h>
 
-static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sCallback;
+static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sEventCallback;
+static std::function<void()> sTerminateCallback;
 static std::deque<std::shared_ptr<EventLoopEvent> > sPendingEvents;
 std::map<double, std::vector<std::pair<EventLoopTimer::Type, std::weak_ptr<EventLoopTimer> > > > sTimers;
 static std::unordered_set<NSEvent*> sKnownEvents;
@@ -177,7 +178,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         }
 #warning maybe only look at mouse/key events or give eventloop a list of wanted types?
         std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event, EventLoopEvent::None);
-        if (sCallback && !sCallback(shared)) {
+        if (sEventCallback && !sEventCallback(shared)) {
             NSPoint loc = [event locationInWindow];
             printf("blocking real event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
             //[event release];
@@ -186,6 +187,17 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         break;
     }
     return event;
+}
+
+typedef void (*TerminateSignature)(id self, SEL _cmd, id sender);
+static IMP sTerminateImp = NULL;
+static void patchedTerminate(id self, SEL _cmd, id sender)
+{
+    if (sTerminateCallback)
+        sTerminateCallback();
+
+    TerminateSignature sig = (TerminateSignature)sTerminateImp;
+    sig(self, _cmd, sender);
 }
 
 void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
@@ -213,14 +225,26 @@ void EventLoop::wakeup()
 
 void EventLoop::swizzle()
 {
-    Method original = class_getInstanceMethod([NSApplication class],
-                                              @selector(nextEventMatchingMask:untilDate:inMode:dequeue:));
-    sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
+    {
+        Method original = class_getInstanceMethod([NSApplication class],
+                                                  @selector(nextEventMatchingMask:untilDate:inMode:dequeue:));
+        sNextEventMatchingMaskImp = method_setImplementation(original, (IMP)patchedNextEventMatchingMask);
+    }
+    {
+        Method original = class_getInstanceMethod([NSApplication class],
+                                                  @selector(terminate:));
+        sTerminateImp = method_setImplementation(original, (IMP)patchedTerminate);
+    }
 }
 
 void EventLoop::onEvent(const std::function<bool(const std::shared_ptr<EventLoopEvent>&)>& on)
 {
-    sCallback = on;
+    sEventCallback = on;
+}
+
+void EventLoop::onTerminate(const std::function<void()>& on)
+{
+    sTerminateCallback = on;
 }
 
 std::shared_ptr<EventLoopTimer> EventLoop::makeTimer()
