@@ -14,17 +14,22 @@ public:
     MessagePortLocal(const std::string& name);
     ~MessagePortLocal();
 
-    typedef std::function<void(int32_t id, const std::vector<uint8_t>& data)> Callback;
-    void onMessage(const Callback& on) { mCallback = on; }
+    typedef std::function<void(int32_t id, const std::vector<uint8_t>& data)> MessageCallback;
+    void onMessage(const MessageCallback& on) { mMessageCallback = on; }
+
+    typedef std::function<void()> InvalidatedCallback;
+    void onInvalidated(const InvalidatedCallback& on) { mInvalidatedCallback = on; }
 
 private:
-    static CFDataRef callback(CFMessagePortRef port,
-                              SInt32 messageID,
-                              CFDataRef data,
-                              void *info);
+    static CFDataRef messageCallback(CFMessagePortRef port,
+                                     SInt32 messageID,
+                                     CFDataRef data,
+                                     void *info);
+    static void invalidatedCallback(CFMessagePortRef ms, void *info);
 
     CFRunLoopSourceRef mSource;
-    Callback mCallback;
+    MessageCallback mMessageCallback;
+    InvalidatedCallback mInvalidatedCallback;
 };
 
 class MessagePortRemote
@@ -37,8 +42,14 @@ public:
     bool send(int32_t id, const std::vector<uint8_t>& data) const;
     bool send(const std::vector<uint8_t>& data) const;
 
+    typedef std::function<void()> InvalidatedCallback;
+    void onInvalidated(const InvalidatedCallback& on) { mInvalidatedCallback = on; }
+
 private:
+    static void invalidatedCallback(CFMessagePortRef ms, void *info);
+
     CFMessagePortRef mPort;
+    InvalidatedCallback mInvalidatedCallback;
 };
 
 #endif
