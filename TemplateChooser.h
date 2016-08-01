@@ -37,11 +37,11 @@ class TemplateChooser : public QDialog
     Q_OBJECT
 
 public:
-    explicit TemplateChooser(QWidget *parent, const QString& current, const QStringList& temps, uint64_t psn, uint64_t windowId);
+    explicit TemplateChooser(QWidget *parent, const QString& current, const QStringList& temps, int32_t pid, uint64_t windowId);
     ~TemplateChooser();
 
 signals:
-    void chosen(uint64_t psn, const QString& templ);
+    void chosen(int32_t pid, const QString& templ);
 
 private slots:
     void emitChosen();
@@ -50,7 +50,8 @@ private:
     Ui::TemplateChooser *ui;
     helpers::ScreenShotWidget* screenShot;
     QVBoxLayout* screenShotLayout;
-    uint64_t wpsn, wid;
+    int32_t wpid;
+    uint64_t wid;
 };
 
 #endif // TEMPLATECHOOSER_H

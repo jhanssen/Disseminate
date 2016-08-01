@@ -16,32 +16,20 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef WINDOWSELECTOROSX_H
-#define WINDOWSELECTOROSX_H
+#ifndef PROCESSINFORMATION_H
+#define PROCESSINFORMATION_H
 
-#include <string>
-#include <vector>
 #include <QPixmap>
+#include <unistd.h>
 
-struct WindowRect
+struct ProcessInformation
 {
-    int x, y;
-    int width, height;
-};
-
-struct WindowInfo
-{
-    std::string name;
-    uint64_t pid;
-    WindowRect bounds;
+    QPixmap icon;
+    QString title;
     uint64_t windowId;
-    uint64_t level;
-    uint64_t order;
-    uint64_t psn;
-    QPixmap image;
 };
 
-void getWindows(std::vector<WindowInfo>& windows);
-QPixmap getScreenshot(uint64_t windowId);
+ProcessInformation getInformation(pid_t pid);
+QPixmap getScreenshot(pid_t pid);
 
 #endif

@@ -16,39 +16,31 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "WindowSelectorOSX.h"
+#include "ProcessInformation.h"
+#include "CocoaUtils.h"
 #import <Cocoa/Cocoa.h>
 #include <QtMac>
-
-class ScopedPool
-{
-public:
-    ScopedPool() { mPool = [[NSAutoreleasePool alloc] init]; }
-    ~ScopedPool() { [mPool drain]; }
-
-private:
-    NSAutoreleasePool* mPool;
-};
 
 static std::string toStdString(NSString* str)
 {
     return std::string([str UTF8String]);
 }
 
-static WindowRect toWindowRect(const CGRect& cg)
+static QString toQString(NSString* str)
 {
-    WindowRect r;
-    r.x = cg.origin.x;
-    r.y = cg.origin.y;
-    r.width = cg.size.width;
-    r.height = cg.size.height;
-    return r;
+    return QString::fromUtf8([str UTF8String]);
 }
 
 struct WindowData
 {
-    std::vector<WindowInfo> info;
-    uint64_t order;
+    pid_t pid;
+    struct Entry
+    {
+        CGWindowID window;
+        QPixmap icon;
+        QString name;
+    };
+    std::vector<Entry> windows;
 };
 
 void WindowListApplierFunction(const void *inputDictionary, void *context)
@@ -57,7 +49,6 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
 
     NSDictionary *entry = (__bridge NSDictionary*)inputDictionary;
     WindowData* data = (__bridge WindowData*)context;
-    WindowInfo info;
 
     // The flags that we pass to CGWindowListCopyWindowInfo will automatically filter out most undesirable windows.
     // However, it is possible that we will get back a window that we cannot read from, so we'll filter those out manually.
@@ -68,22 +59,40 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
         if (layer != 0)
             return;
 
+        auto pid = [entry[(id)kCGWindowOwnerPID] integerValue];
+        if (pid != data->pid)
+            return;
+
+        WindowData::Entry info;
+
         // Grab the application name, but since it's optional we need to check before we can use it.
         NSString *applicationName = entry[(id)kCGWindowOwnerName];
         if(applicationName != NULL)
         {
-            info.name = toStdString(applicationName);
+            info.name = toQString(applicationName);
         }
         else
         {
             // The application name was not provided, so we use a fake application name to designate this.
             // PID is required so we assume it's present.
             NSString *nameAndPID = [NSString stringWithFormat:@"((unknown)) (%@)", entry[(id)kCGWindowOwnerPID]];
-            info.name = toStdString(nameAndPID);
+            info.name = toQString(nameAndPID);
             [nameAndPID release];
         }
-        info.pid = [entry[(id)kCGWindowOwnerPID] integerValue];
+        auto windowId = [entry[(id)kCGWindowNumber] integerValue];
+        info.window = windowId;
 
+        // Grab the Window icon.
+        NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+        NSImage* icon = [app icon];
+        if (icon) {
+            NSRect iconRect = NSMakeRect(0, 0, icon.size.width, icon.size.height);
+            CGImageRef cgIcon = [icon CGImageForProposedRect:&iconRect context:NULL hints:nil];
+            info.icon = QtMac::fromCGImageRef(cgIcon);
+        }
+        data->windows.push_back(info);
+
+        /*
         ProcessSerialNumber psn;
         psn.highLongOfPSN = 0;
         psn.lowLongOfPSN = 0;
@@ -112,16 +121,11 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
         }
 
         data->info.push_back(info);
+        */
     }
 }
 
-QPixmap getScreenshot(uint64_t windowId)
-{
-    CGImageRef windowImage = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowId, kCGWindowImageDefault | kCGWindowImageShouldBeOpaque);
-    return QtMac::fromCGImageRef(windowImage);
-}
-
-void getWindows(std::vector<WindowInfo>& infos)
+static void windowsForPid(pid_t pid, WindowData* windowData)
 {
     CGWindowListOption listOptions;
     listOptions = kCGWindowListOptionAll | kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
@@ -130,10 +134,31 @@ void getWindows(std::vector<WindowInfo>& infos)
 
     // Copy the returned list, further pruned, to another list. This also adds some bookkeeping
     // information to the list as well as
-    WindowData windowData;
+    windowData->pid = pid;
 
-    CFArrayApplyFunction(windowList, CFRangeMake(0, CFArrayGetCount(windowList)), &WindowListApplierFunction, (__bridge void *)&windowData);
+    CFArrayApplyFunction(windowList, CFRangeMake(0, CFArrayGetCount(windowList)), &WindowListApplierFunction, (__bridge void *)windowData);
     CFRelease(windowList);
+}
 
-    infos = windowData.info;
+QPixmap getScreenshot(pid_t pid)
+{
+    WindowData data;
+    windowsForPid(pid, &data);
+
+    if (data.windows.empty())
+        return QPixmap();
+    auto windowId = data.windows[0].window;
+    CGImageRef windowImage = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, windowId, kCGWindowImageDefault | kCGWindowImageShouldBeOpaque);
+    return QtMac::fromCGImageRef(windowImage);
+}
+
+ProcessInformation getInformation(pid_t pid)
+{
+    WindowData data;
+    windowsForPid(pid, &data);
+
+    if (data.windows.empty())
+        return ProcessInformation();
+    ProcessInformation info = { data.windows[0].icon, data.windows[0].name, data.windows[0].window };
+    return info;
 }

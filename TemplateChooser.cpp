@@ -19,13 +19,13 @@
 #include "TemplateChooser.h"
 #include "Helpers.h"
 #include "Utils.h"
-#include "WindowSelectorOSX.h"
+#include "ProcessInformation.h"
 #include "ui_TemplateChooser.h"
 
-TemplateChooser::TemplateChooser(QWidget *parent, const QString& current, const QStringList& temps, uint64_t psn, uint64_t windowId) :
+TemplateChooser::TemplateChooser(QWidget *parent, const QString& current, const QStringList& temps, int32_t pid, uint64_t windowId) :
     QDialog(parent),
     ui(new Ui::TemplateChooser),
-    wpsn(psn), wid(windowId)
+    wpid(pid), wid(windowId)
 {
     ui->setupUi(this);
     ui->templateList->addItem("<No template>");
@@ -59,7 +59,7 @@ void TemplateChooser::emitChosen()
     if (!ui->templateList->currentItem())
         return;
     if (ui->templateList->row(ui->templateList->currentItem()) == 0)
-        emit chosen(wpsn, QString());
+        emit chosen(wpid, QString());
     else
-        emit chosen(wpsn, ui->templateList->currentItem()->text());
+        emit chosen(wpid, ui->templateList->currentItem()->text());
 }

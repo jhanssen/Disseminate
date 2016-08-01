@@ -45,8 +45,7 @@ set(SOURCES
     main.cpp
     Disseminate.cpp
     Utils.mm
-    WindowSelector.cpp
-    WindowSelectorOSX.mm
+    ProcessInformation.mm
     KeyInput.cpp
     Preferences.cpp
     Templates.cpp

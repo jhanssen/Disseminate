@@ -30,7 +30,6 @@
 Disseminate::Disseminate(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Disseminate),
-    selector(0),
     broadcasting(false),
     messagePort("jhanssen.disseminate.server")
 {
@@ -39,10 +38,7 @@ Disseminate::Disseminate(QWidget *parent) :
     loadConfig();
     applyConfig();
 
-    connect(ui->windowList, &QListWidget::itemDoubleClicked, this, &Disseminate::windowDoubleClicked);
-
-    connect(ui->addWindow, &QPushButton::clicked, this, &Disseminate::addWindow);
-    connect(ui->removeWindow, &QPushButton::clicked, this, &Disseminate::removeWindow);
+    connect(ui->clientList, &QListWidget::itemDoubleClicked, this, &Disseminate::clientDoubleClicked);
 
     connect(ui->actionStart, &QAction::triggered, this, &Disseminate::startBroadcast);
     connect(ui->actionStop, &QAction::triggered, this, &Disseminate::stopBroadcast);
@@ -56,8 +52,6 @@ Disseminate::Disseminate(QWidget *parent) :
     connect(ui->whitelistRadio, &QRadioButton::toggled, this, &Disseminate::whiteListChanged);
     connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
 
-    connect(ui->reloadWindows, &QPushButton::clicked, this, &Disseminate::reloadWindows);
-
     QTimer::singleShot(50, [this]() {
             if (broadcast::checkAllowsAccessibility() == broadcast::Unknown) {
                 QMessageBox::warning(this, "Accessibility permissions required",
@@ -69,14 +63,16 @@ Disseminate::Disseminate(QWidget *parent) :
             const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
             printf("got message %d -> %s\n", id, name.c_str());
             auto remote = std::make_shared<MessagePortRemote>(name);
-            std::weak_ptr<MessagePortRemote> weak = remote;
-            remote->onInvalidated([this, id, weak]() {
-                    if (auto shared = weak.lock()) {
-                        printf("invalidated port\n");
-                        remotePorts.erase(id);
-                    }
+            // std::weak_ptr<MessagePortRemote> weak = remote;
+            remote->onInvalidated([this, id/*, weak*/]() {
+                    // if (auto shared = weak.lock()) {
+                    // }
+                    printf("invalidated port\n");
+                    remotePorts.erase(id);
+                    reloadClients();
                 });
             remotePorts[id] = remote;
+            reloadClients();
         });
 }
 
@@ -84,51 +80,14 @@ Disseminate::~Disseminate()
 {
     broadcast::stop();
     broadcast::cleanup();
-    delete selector;
     delete ui;
-}
-
-void Disseminate::addWindow()
-{
-    if (!selector) {
-        selector = new WindowSelector(this);
-        connect(selector, &WindowSelector::windowSelected, this, &Disseminate::windowSelected);
-    }
-    selector->init();
-    selector->exec();
-}
-
-void Disseminate::windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image)
-{
-    const QString str = name + " (" + QString::number(psn) + ")";
-    if (!helpers::contains(ui->windowList, str)) {
-        const bool bc = broadcasting;
-        if (bc)
-            stopBroadcast();
-        ui->windowList->addItem(new WindowItem(str, name, psn, winid, image));
-        broadcast::addWindow(psn);
-        if (bc)
-            startBroadcast();
-    }
-}
-
-void Disseminate::removeWindow()
-{
-    if (broadcasting)
-        stopBroadcast();
-
-    const auto& items = ui->windowList->selectedItems();
-    for (auto& item : items) {
-        broadcast::removeWindow(static_cast<WindowItem*>(item)->wpsn);
-        delete item;
-    }
 }
 
 void Disseminate::startBroadcast()
 {
     if (broadcasting)
         return;
-    if (ui->windowList->count() < 2) {
+    if (ui->clientList->count() < 2) {
         QMessageBox::information(this, "No windows to broadcast", "Add at least two windows before broadcasting");
         return;
     }
@@ -398,46 +357,22 @@ void Disseminate::saveConfig()
 
 void Disseminate::applyConfig()
 {
-    reloadWindows();
+    reloadClients();
     updateBindings();
 }
 
-void Disseminate::reloadWindows()
+void Disseminate::reloadClients()
 {
     const bool cap = broadcasting;
     if (cap)
         stopBroadcast();
 
-    const QList<WindowSelector::Window> windows = WindowSelector::getWindowList();
-    broadcast::clearWindows();
-
-    QList<WindowSelector::Window> current;
-    const int windowCount = ui->windowList->count();
-    for (int i = 0; i < windowCount; ++i) {
-        WindowItem* item = static_cast<WindowItem*>(ui->windowList->item(i));
-        current.append({ item->wname, item->wpsn, item->wid, item->wicon });
-    }
-    ui->windowList->clear();
-
-    // readd existing windows
-    for (const auto& c : current) {
-        if (windows.contains(c)) {
-            const QString str = c.name + " (" + QString::number(c.psn) + ")";
-            ui->windowList->addItem(new WindowItem(str, c.name, c.psn, c.winid, c.icon));
-            broadcast::addWindow(c.psn);
-        }
-    }
-    // then readd automatic windows
-    for (const auto& str : prefs.automaticWindows) {
-        QRegExp rx(str, Qt::CaseInsensitive);
-        for (const auto& win : windows) {
-            if (rx.indexIn(win.name) != -1) {
-                const QString str = win.name + " (" + QString::number(win.psn) + ")";
-                if (!helpers::contains(ui->windowList, str)) {
-                    ui->windowList->addItem(new WindowItem(str, win.name, win.psn, win.winid, win.icon));
-                    broadcast::addWindow(win.psn);
-                }
-            }
+    ui->clientList->clear();
+    for (const auto& remote : remotePorts) {
+        const auto& info = getInformation(remote.first);
+        if (!info.title.isEmpty()) {
+            QString text = info.title + " (" + QString::number(info.windowId) + ")";
+            ui->clientList->addItem(new ClientItem(text, info.title, remote.first, info.windowId, info.icon));
         }
     }
 
@@ -463,27 +398,28 @@ void Disseminate::updateBindings()
     }
 }
 
-void Disseminate::windowDoubleClicked(QListWidgetItem* item)
+void Disseminate::clientDoubleClicked(QListWidgetItem* item)
 {
     if (!item)
         return;
-    WindowItem* witem = static_cast<WindowItem*>(item);
-    TemplateChooser chooser(this, chosenTemplates[witem->wpsn], temps.keys(), witem->wpsn, witem->wid);
+    ClientItem* witem = static_cast<ClientItem*>(item);
+    TemplateChooser chooser(this, chosenTemplates[witem->wpid], temps.keys(), witem->wpid, witem->wid);
     connect(&chooser, &TemplateChooser::chosen, this, &Disseminate::templateChosen);
 
     chooser.exec();
 }
 
-void Disseminate::templateChosen(uint64_t psn, const QString& name)
+void Disseminate::templateChosen(int32_t pid, const QString& name)
 {
-    chosenTemplates[psn] = name;
-    broadcast::clearKeysForWindow(psn);
+    chosenTemplates[pid] = name;
+#warning fixme
+    //broadcast::clearKeysForWindow(psn);
     if (name.isEmpty())
         return;
     const auto& item = temps[name];
-    broadcast::setKeyTypeForWindow(psn, item.whitelist ? broadcast::WhiteList : broadcast::BlackList);
+    //broadcast::setKeyTypeForWindow(psn, item.whitelist ? broadcast::WhiteList : broadcast::BlackList);
     const auto& keys = item.keys;
     for (const auto& key : keys) {
-        broadcast::addKeyForWindow(psn, key.first, key.second);
+        //broadcast::addKeyForWindow(psn, key.first, key.second);
     }
 }

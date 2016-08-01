@@ -16,38 +16,13 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout_4">
     <item>
-     <widget class="QGroupBox" name="windowGroup">
+     <widget class="QGroupBox" name="clientGroup">
       <property name="title">
-       <string>Windows</string>
+       <string>Clients</string>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QListWidget" name="windowList"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_3">
-         <item>
-          <widget class="QPushButton" name="addWindow">
-           <property name="text">
-            <string>Add Window</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="removeWindow">
-           <property name="text">
-            <string>Remove Window</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="reloadWindows">
-         <property name="text">
-          <string>Reload Windows</string>
-         </property>
-        </widget>
+        <widget class="QListWidget" name="clientList"/>
        </item>
       </layout>
      </widget>

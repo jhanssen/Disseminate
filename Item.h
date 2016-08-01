@@ -22,19 +22,19 @@
 #include <QListWidgetItem>
 #include <QPixmap>
 
-class WindowItem : public QListWidgetItem
+class ClientItem : public QListWidgetItem
 {
 public:
-    WindowItem(const QString &text, const QString& name, uint64_t psn, uint64_t winid, const QPixmap& icon);
+    ClientItem(const QString &text, const QString& name, int32_t pid, uint64_t winid, const QPixmap& icon);
 
     QString wname;
-    uint64_t wpsn;
+    int32_t wpid;
     uint64_t wid;
     QPixmap wicon;
 };
 
-inline WindowItem::WindowItem(const QString& text, const QString& name, uint64_t psn, uint64_t winid, const QPixmap& icon)
-    : QListWidgetItem(text), wname(name), wpsn(psn), wid(winid), wicon(icon)
+inline ClientItem::ClientItem(const QString& text, const QString& name, int32_t pid, uint64_t winid, const QPixmap& icon)
+    : QListWidgetItem(text), wname(name), wpid(pid), wid(winid), wicon(icon)
 {
     if (!wicon.isNull()) {
         setIcon(wicon);

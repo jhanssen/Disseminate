@@ -21,7 +21,7 @@
 
 #include <QMainWindow>
 #include <QMap>
-#include "WindowSelector.h"
+#include "ProcessInformation.h"
 #include "Preferences.h"
 #include "Templates.h"
 #include "MessagePort.h"
@@ -42,14 +42,10 @@ public:
     ~Disseminate();
 
 private slots:
-    void addWindow();
-    void removeWindow();
-
-    void windowSelected(const QString& name, uint64_t psn, uint64_t winid, const QPixmap& image);
     void keyAdded(int64_t key, uint64_t mask);
     void preferencesChanged(const Preferences::Config& cfg);
     void templatesChanged(const Templates::Config& cfg);
-    void windowDoubleClicked(QListWidgetItem* item);
+    void clientDoubleClicked(QListWidgetItem* item);
 
     void startBroadcast();
     void stopBroadcast();
@@ -63,10 +59,10 @@ private slots:
     void preferences();
     void templates();
 
-    void reloadWindows();
+    void reloadClients();
     void updateBindings();
 
-    void templateChosen(uint64_t psn, const QString& name);
+    void templateChosen(int32_t psn, const QString& name);
 
 private:
     void saveConfig();
@@ -75,12 +71,11 @@ private:
 
 private:
     Ui::Disseminate *ui;
-    WindowSelector* selector;
     bool broadcasting;
 
     Preferences::Config prefs;
     Templates::Config temps;
-    QMap<uint64_t, QString> chosenTemplates;
+    QMap<int32_t, QString> chosenTemplates;
 
     MessagePortLocal messagePort;
     std::map<int32_t, std::shared_ptr<MessagePortRemote> > remotePorts;
