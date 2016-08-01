@@ -5,40 +5,8 @@
 #include <memory>
 #include <MouseEvent_generated.h>
 #include "CocoaUtils.h"
-#include <mach/mach_time.h>
 #import <Cocoa/Cocoa.h>
 #include "EventLoop.h"
-
-// From
-// http://stackoverflow.com/questions/1597383/cgeventtimestamp-to-nsdate
-// Which credits Apple sample code for this routine.
-static inline uint64_t timeInNanoseconds(void)
-{
-    uint64_t time;
-    uint64_t timeNano;
-    static mach_timebase_info_data_t sTimebaseInfo;
-
-    time = mach_absolute_time();
-
-    // Convert to nanoseconds.
-
-    // If this is the first time we've run, get the timebase.
-    // We can use denom == 0 to indicate that sTimebaseInfo is
-    // uninitialised because it makes no sense to have a zero
-    // denominator is a fraction.
-    if (sTimebaseInfo.denom == 0) {
-        (void) mach_timebase_info(&sTimebaseInfo);
-    }
-
-    // This could overflow; for testing needs we probably don't care.
-    timeNano = time * sTimebaseInfo.numer / sTimebaseInfo.denom;
-    return timeNano;
-}
-
-static inline NSTimeInterval timeIntervalSinceSystemStartup()
-{
-    return timeInNanoseconds() / 1000000000.0;
-}
 
 template<typename T>
 class Detachable
@@ -186,7 +154,7 @@ class ScriptEngineData
 {
 public:
     ScriptEngineData(const std::string& id)
-        : uuid(id)
+        : uuid(id), nextTimer(0)
     {
     }
 
@@ -216,6 +184,9 @@ public:
         if (it != ports.end())
             ports.erase(it);
     }
+
+    uint32_t nextTimer;
+    std::map<uint32_t, std::shared_ptr<EventLoopTimer> > timers;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -273,6 +244,44 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         };
         clients["on"] = [this](sel::function<void(int, int, const std::string&)> fun) {
             data->clientChangeFunctions.push_back(fun);
+        };
+    }
+
+    {
+        auto timers = (*state)["timers"];
+        timers["startTimeout"] = [this](sel::function<void()> cb, uint32_t when) -> int {
+            auto next = data->nextTimer++;
+            auto timer = EventLoop::eventLoop()->makeTimer();
+            timer->onTimeout([this, next, cb]() mutable {
+                    cb();
+
+                    auto timer = data->timers.find(next);
+                    if (timer == data->timers.end())
+                        return;
+                    timer->second->stop();
+                    data->timers.erase(timer);
+                });
+            timer->start(when, EventLoopTimer::Timeout);
+            data->timers[next] = timer;
+            return next;
+        };
+        timers["startInterval"] = [this](sel::function<void()> cb, uint32_t when) -> int {
+            auto next = data->nextTimer++;
+            auto timer = EventLoop::eventLoop()->makeTimer();
+            timer->onTimeout([this, next, cb]() mutable {
+                    cb();
+                });
+            timer->start(when, EventLoopTimer::Interval);
+            data->timers[next] = timer;
+            return next;
+        };
+        timers["stop"] = [this](uint32_t id) -> bool {
+            auto timer = data->timers.find(id);
+            if (timer == data->timers.end())
+                return false;
+            const bool ok = timer->second->stop();
+            data->timers.erase(timer);
+            return ok;
         };
     }
 
@@ -426,6 +435,17 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  logInt(clients.size())\n"
              "  logString(clients.name(0))\n"
              "end\n"
+             "local timeoutCnt = 0\n"
+             "local timeoutId\n"
+             "function onTimeout()\n"
+             "  timeoutCnt = timeoutCnt + 1\n"
+             "  if timeoutCnt > 3 then\n"
+             "    logString(\"stopping\")\n"
+             "    timers.stop(timeoutId)\n"
+             "  end\n"
+             "  logString(\"timeout\")"
+             "end\n"
+             "timeoutId = timers.startInterval(onTimeout, 2000)\n"
              "logInt(enums.MouseMove)\n"
              "logInt(clients.size())\n"
              "clients.on(clientChange)\n"

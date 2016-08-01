@@ -133,16 +133,20 @@ static Context context;
                             switch (id) {
                             case Disseminate::FlatbufferTypes::Evaluate:
                                 context.lua->evaluate(toString(data));
+                                loop->wakeup();
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteAdd:
                                 context.lua->registerClient(ScriptEngine::Remote, toString(data));
+                                loop->wakeup();
                                 break;
                             case Disseminate::FlatbufferTypes::RemoteRemove:
                                 context.lua->unregisterClient(ScriptEngine::Remote, toString(data));
+                                loop->wakeup();
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::GetMouseEvent(&data[0])->UnPack();
                                 context.lua->processRemoteEvent(event);
+                                loop->wakeup();
                                 break; }
                             default:
                                 break;
@@ -153,6 +157,7 @@ static Context context;
                             printf("iteration\n");
                             return context.lua->processLocalEvent(event);
                         });
+                    loop->wakeup();
 
                     MessagePortRemote remote("jhanssen.disseminate.server");
                     if (!remote.send(getpid(), toVector(uuid))) {
