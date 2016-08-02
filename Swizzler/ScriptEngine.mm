@@ -372,7 +372,10 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             auto next = data->nextTimer++;
             auto timer = EventLoop::eventLoop()->makeTimer();
             timer->onTimeout([this, next, cb]() mutable {
-                    cb();
+                    {
+                        sel::HandlerScope scope(state->GetExceptionHandler());
+                        cb();
+                    }
 
                     auto timer = data->timers.find(next);
                     if (timer == data->timers.end())
@@ -388,6 +391,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             auto next = data->nextTimer++;
             auto timer = EventLoop::eventLoop()->makeTimer();
             timer->onTimeout([this, next, cb]() mutable {
+                    sel::HandlerScope scope(state->GetExceptionHandler());
                     cb();
                 });
             timer->start(when, EventLoopTimer::Interval);
