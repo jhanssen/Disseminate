@@ -58,23 +58,30 @@ set(SOURCES
 add_executable(Disseminate MACOSX_BUNDLE icons/AppIcon.icns ${SOURCES})
 
 set(FLATBUFFERS_FLATC_EXECUTABLE flatbuffers/flatc)
-function(buffers_to_cpp TARGET SRC_FBS)
-  get_filename_component(SRC_FBS_DIR ${SRC_FBS} PATH)
-  string(REGEX REPLACE "\\.fbs$" "_generated.h" GEN_HEADER ${SRC_FBS})
-  add_custom_target(
-      ${TARGET}
-      COMMAND "${FLATBUFFERS_FLATC_EXECUTABLE}" -c --no-includes --gen-mutable
-              --gen-object-api -o "${SRC_FBS_DIR}"
-              "${CMAKE_CURRENT_SOURCE_DIR}/${SRC_FBS}"
-              )
-  add_dependencies(Disseminate ${TARGET})
+function(buffers_to_cpp TARGET PATH SRC_FBS)
+    set(GEN_HEADERS "")
+    foreach(BUFFER_FILE ${SRC_FBS})
+        string(REGEX REPLACE "\\.fbs$" "_generated.h" GEN_HEADER ${BUFFER_FILE})
+        add_custom_command(
+            OUTPUT ${GEN_HEADER}
+            DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${BUFFER_FILE}"
+            COMMAND "${FLATBUFFERS_FLATC_EXECUTABLE}" -c --no-includes --gen-mutable
+                    --gen-object-api -o "${PATH}"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/${BUFFER_FILE}"
+            )
+        list(APPEND GEN_HEADERS ${GEN_HEADER})
+    endforeach()
+    message(${GEN_HEADERS})
+    add_custom_target(${TARGET} ALL DEPENDS ${GEN_HEADERS})
 endfunction()
 
 set(FLATFILES
     buffers/MouseEvent.fbs
+    buffers/KeyEvent.fbs
     )
 
-buffers_to_cpp(flatbufferfiles ${FLATFILES})
+buffers_to_cpp(flatbufferfiles buffers "${FLATFILES}")
+add_dependencies(Disseminate flatbufferfiles)
 
 # Use the Widgets module from Qt 5.
 target_link_libraries(Disseminate Qt5::Widgets Qt5::MacExtras ${COCOA_LIBRARIES} ${FLATBUFFERS_LIBRARY})

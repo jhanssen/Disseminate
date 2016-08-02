@@ -1,0 +1,21 @@
+namespace Disseminate.Key;
+
+enum Type : byte { Up, Down }
+
+struct Location {
+    x: float;
+    y: float;
+}
+
+table Event
+{
+    type: Type;
+    keyCode: int;
+    location: Location;
+    windowNumber: int;
+    modifiers: ushort = 0;
+    timestamp: double = 0;
+    fromUuid: string;
+}
+
+root_type Event;
