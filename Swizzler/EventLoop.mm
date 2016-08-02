@@ -151,7 +151,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
             if (exp == expiration)
                 return 0;
             fireTimers();
-            return 0;
+            continue;
         }
         if (exp && exp != expiration)
             fireTimers();
