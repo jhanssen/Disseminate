@@ -146,6 +146,104 @@ MouseEvent::MouseEvent(NSEvent* event)
     internal->windowNumber = [event windowNumber];
 }
 
+class KeyEvent : public Detachable<Disseminate::Key::EventT>
+{
+public:
+    KeyEvent(int _type, int _code, double _x, double _y, bool _repeat = false, const std::string& _text = std::string())
+    {
+        internal = std::make_shared<Disseminate::Key::EventT>();
+        internal->type = static_cast<Disseminate::Key::Type>(_type);
+        internal->keyCode = _code;
+        internal->windowNumber = 0;
+        internal->modifiers = 0;
+        internal->timestamp = timeIntervalSinceSystemStartup();
+        internal->text = _text;
+        internal->repeat = _repeat;
+
+        internal->location = std::make_unique<Disseminate::Key::Location>(_x, _y);
+    }
+    KeyEvent(std::unique_ptr<Disseminate::Key::EventT>& unique)
+    {
+        internal.reset(unique.release());
+    }
+    KeyEvent(NSEvent* event);
+
+    double x() { return internal->location->x(); }
+    void setX(double x) { detach(); internal->location->mutate_x(x); }
+    float y() { return internal->location->y(); }
+    void setY(double y) { detach(); internal->location->mutate_y(y); }
+
+    int32_t type() { return internal->type; }
+    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Key::Type>(arg); }
+
+    int32_t keyCode() { return internal->keyCode; }
+    void setKeyCode(int32_t arg) { detach(); internal->keyCode = arg; }
+
+    int32_t windowNumber() { return internal->windowNumber; }
+    void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
+
+    uint16_t modifiers() { return internal->modifiers; }
+    void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
+
+    double timestamp() { return internal->timestamp; }
+    void setTimestamp(double arg) { detach(); internal->timestamp = arg; };
+
+    std::string text() { return internal->text; }
+    void setText(const std::string& arg) { detach(); internal->text = arg; }
+
+    bool repeat() { return internal->repeat; }
+    void setRepeat(bool arg) { detach(); internal->repeat = arg; }
+
+    KeyEvent clone() { return KeyEvent(*this); }
+
+    Disseminate::Key::EventT* flat() { return internal.get(); }
+
+protected:
+    virtual void detachInternal()
+    {
+        std::shared_ptr<Disseminate::Key::EventT> other = internal;
+        internal = std::make_shared<Disseminate::Key::EventT>();
+        internal->type = other->type;
+        internal->keyCode = other->keyCode;
+        internal->windowNumber = other->windowNumber;
+        internal->modifiers = other->modifiers;
+        internal->timestamp = other->timestamp;
+        internal->text = other->text;
+        internal->repeat = other->repeat;
+        internal->fromUuid = other->fromUuid;
+
+        if (other->location) {
+            internal->location = std::make_unique<Disseminate::Key::Location>(other->location->x(), other->location->y());
+        }
+    }
+};
+
+KeyEvent::KeyEvent(NSEvent* event)
+{
+    internal = std::make_shared<Disseminate::Key::EventT>();
+    switch ([event type]) {
+    case NSKeyUp:
+        internal->type = Disseminate::Key::Type_Up;
+        break;
+    case NSKeyDown:
+        internal->type = Disseminate::Key::Type_Down;
+        break;
+    default:
+        abort();
+        break;
+    }
+    {
+        NSPoint location = [event locationInWindow];
+        internal->location = std::make_unique<Disseminate::Key::Location>(location.x, location.y);
+    }
+    internal->text = toStdString([event characters]);
+    internal->keyCode = [event keyCode];
+    internal->modifiers = [event modifierFlags];
+    internal->timestamp = [event timestamp];
+    internal->windowNumber = [event windowNumber];
+    internal->repeat = [event isARepeat];
+}
+
 namespace enums {
 enum { Add, Remove };
 }
@@ -159,6 +257,7 @@ public:
     }
 
     std::vector<sel::function<bool(int, MouseEvent)> > mouseEventFunctions;
+    std::vector<sel::function<bool(int, KeyEvent)> > keyEventFunctions;
     std::vector<sel::function<void(int, int, const std::string&)> > clientChangeFunctions;
 
     std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
@@ -218,6 +317,24 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "pressure", &MouseEvent::pressure,
         "set_pressure", &MouseEvent::setPressure,
         "clone", &MouseEvent::clone);
+    (*state)["KeyEvent"].SetClass<KeyEvent, int, int, double, double, bool, std::string>(
+        "type", &KeyEvent::type,
+        "set_type", &KeyEvent::setType,
+        "keycode", &KeyEvent::keyCode,
+        "set_keycode", &KeyEvent::keyCode,
+        "x", &KeyEvent::x,
+        "set_x", &KeyEvent::setX,
+        "y", &KeyEvent::y,
+        "set_y", &KeyEvent::setY,
+        "modifiers", &KeyEvent::modifiers,
+        "set_modifiers", &KeyEvent::setModifiers,
+        "windownumber", &KeyEvent::windowNumber,
+        "set_windownumber", &KeyEvent::setWindowNumber,
+        "text", &KeyEvent::text,
+        "set_text", &KeyEvent::setText,
+        "repeat", &KeyEvent::repeat,
+        "set_repeat", &KeyEvent::setRepeat,
+        "clone", &KeyEvent::clone);
 
     setEnum(*state, "MouseMove", Disseminate::Mouse::Type_Move);
     setEnum(*state, "MousePress", Disseminate::Mouse::Type_Press);
@@ -226,6 +343,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
     setEnum(*state, "MouseButtonLeft", Disseminate::Mouse::Button_Left);
     setEnum(*state, "MouseButtonMiddle", Disseminate::Mouse::Button_Middle);
     setEnum(*state, "MouseButtonRight", Disseminate::Mouse::Button_Right);
+    setEnum(*state, "KeyUp", Disseminate::Key::Type_Up);
+    setEnum(*state, "KeyDown", Disseminate::Key::Type_Down);
     setEnum(*state, "Add", enums::Add);
     setEnum(*state, "Remove", enums::Remove);
     setEnum(*state, "Local", ScriptEngine::Local);
@@ -373,8 +492,74 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             location.x = event.x();
             location.y = event.y();
 
-            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:0 timestamp:event.timestamp()
+            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
                             windowNumber:event.windowNumber() context:0 eventNumber:0 clickCount:count pressure:pressure];
+            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
+        };
+    }
+
+    {
+        auto keyEvent = (*state)["keyEvent"];
+        keyEvent["on"] = [this](sel::function<bool(int, KeyEvent)> fun) {
+            data->keyEventFunctions.push_back(fun);
+        };
+        keyEvent["sendToAll"] = [this](KeyEvent event) {
+            flatbuffers::FlatBufferBuilder builder;
+            auto flat = event.flat();
+            flat->fromUuid = data->uuid;
+            auto buffer = Disseminate::Key::CreateEvent(builder, flat);
+            builder.Finish(buffer);
+            std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                         builder.GetBufferPointer() + builder.GetSize());
+
+            auto port = data->ports.cbegin();
+            const auto end = data->ports.cend();
+            while (port != end) {
+                port->second->send(Disseminate::FlatbufferTypes::KeyEvent, message);
+                ++port;
+            }
+        };
+        keyEvent["sendTo"] = [this](KeyEvent event, const std::string& to) -> bool {
+            // send to specific
+            const std::shared_ptr<MessagePortRemote>& port = data->port(to);
+            if (!port) {
+                // boo
+                printf("invalid port %f %f - %s\n", event.x(), event.y(), to.c_str());
+                return false;
+            }
+            flatbuffers::FlatBufferBuilder builder;
+            auto flat = event.flat();
+            flat->fromUuid = data->uuid;
+            auto buffer = Disseminate::Key::CreateEvent(builder, flat);
+            builder.Finish(buffer);
+            std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                         builder.GetBufferPointer() + builder.GetSize());
+            port->send(Disseminate::FlatbufferTypes::KeyEvent, message);
+            return true;
+        };
+        keyEvent["inject"] = [this](KeyEvent event) {
+            ScopedPool pool;
+            NSEventType type = static_cast<NSEventType>(0);
+            NSPoint location;
+            switch (event.type()) {
+            case Disseminate::Key::Type_Up:
+                type = NSKeyUp;
+                break;
+            case Disseminate::Key::Type_Down:
+                type = NSKeyDown;
+                break;
+            }
+            if (!type) {
+                printf("no valid event type\n");
+                return;
+            }
+            location.x = event.x();
+            location.y = event.y();
+
+            auto wrapper = fromStdString(event.text());
+            NSEvent* evt = [NSEvent keyEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
+                            windowNumber:event.windowNumber() context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
+                            isARepeat:event.repeat() keyCode: event.keyCode()];
             EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
     }
@@ -500,7 +685,7 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
 }
 
-void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData)
+void ScriptEngine::processRemoteMouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData)
 {
     sel::HandlerScope scope(state->GetExceptionHandler());
 
@@ -509,7 +694,24 @@ void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::Mouse::EventT
     const auto end = data->mouseEventFunctions.end();
     while (on != end) {
         MouseEvent remoteEvent(event);
-        printf("processing remote-- %p\n", &remoteEvent);
+        printf("processing remote mouse-- %p\n", &remoteEvent);
+        if (!(*on)(Remote, remoteEvent)) {
+            return;
+        }
+        ++on;
+    }
+}
+
+void ScriptEngine::processRemoteKeyEvent(std::unique_ptr<Disseminate::Key::EventT>& eventData)
+{
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
+    KeyEvent event(eventData);
+    auto on = data->keyEventFunctions.begin();
+    const auto end = data->keyEventFunctions.end();
+    while (on != end) {
+        KeyEvent remoteEvent(event);
+        printf("processing remote key-- %p\n", &remoteEvent);
         if (!(*on)(Remote, remoteEvent)) {
             return;
         }
@@ -535,6 +737,20 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         while (on != end) {
 #warning think I can move this out of the loop now that MouseEvent are copy-on-write
             MouseEvent localEvent(nsevent);
+            printf("processing local-- %p\n", &localEvent);
+            if (!(*on)(Local, localEvent)) {
+                return false;
+            }
+            ++on;
+        }
+        break; }
+    case NSKeyDown:
+    case NSKeyUp: {
+        auto on = data->keyEventFunctions.begin();
+        const auto end = data->keyEventFunctions.end();
+        while (on != end) {
+#warning think I can move this out of the loop now that KeyEvent are copy-on-write
+            KeyEvent localEvent(nsevent);
             printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
                 return false;

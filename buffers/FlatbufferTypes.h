@@ -7,7 +7,8 @@ enum {
     Evaluate = 1,
     MouseEvent = 2,
     RemoteAdd = 3,
-    RemoteRemove = 4
+    RemoteRemove = 4,
+    KeyEvent = 5
 };
 }
 }

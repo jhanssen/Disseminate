@@ -3,6 +3,7 @@
 
 #import <Cocoa/Cocoa.h>
 #include <mach/mach_time.h>
+#include <string>
 
 // From
 // http://stackoverflow.com/questions/1597383/cgeventtimestamp-to-nsdate
@@ -44,5 +45,35 @@ public:
 private:
     NSAutoreleasePool* mPool;
 };
+
+static inline std::string toStdString(NSString* str)
+{
+    return std::string([str UTF8String]);
+}
+
+struct NSStringWrapper
+{
+    enum Mode { Retain, NoRetain };
+    NSStringWrapper(NSString* str, Mode mode = NoRetain)
+        : s(str)
+    {
+        if (mode == Retain)
+            [s retain];
+    }
+    ~NSStringWrapper()
+    {
+        [s release];
+    }
+    NSString* str() { return s; }
+
+private:
+    NSString* s;
+};
+
+static inline std::shared_ptr<NSStringWrapper> fromStdString(const std::string& str)
+{
+    NSString* nsstr = [[NSString alloc] initWithUTF8String:str.c_str()];
+    return std::make_shared<NSStringWrapper>(nsstr);
+}
 
 #endif

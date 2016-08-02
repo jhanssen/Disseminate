@@ -145,7 +145,12 @@ static Context context;
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::Mouse::GetEvent(&data[0])->UnPack();
-                                context.lua->processRemoteEvent(event);
+                                context.lua->processRemoteMouseEvent(event);
+                                loop->wakeup();
+                                break; }
+                            case Disseminate::FlatbufferTypes::KeyEvent: {
+                                auto event = Disseminate::Key::GetEvent(&data[0])->UnPack();
+                                context.lua->processRemoteKeyEvent(event);
                                 loop->wakeup();
                                 break; }
                             default:

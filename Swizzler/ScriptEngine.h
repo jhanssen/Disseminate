@@ -4,6 +4,7 @@
 #include <string>
 #include <selene.h>
 #include <MouseEvent_generated.h>
+#include <KeyEvent_generated.h>
 #include <AppKit/NSEvent.h>
 
 class ScriptEngineData;
@@ -17,7 +18,9 @@ public:
 
     void evaluate(const std::string& code);
 
-    void processRemoteEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData);
+    void processRemoteMouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData);
+    void processRemoteKeyEvent(std::unique_ptr<Disseminate::Key::EventT>& eventData);
+
     bool processLocalEvent(const std::shared_ptr<EventLoopEvent>& event);
 
     enum ClientType { Local, Remote };

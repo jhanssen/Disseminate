@@ -15,6 +15,8 @@ table Event
     windowNumber: int;
     modifiers: ushort = 0;
     timestamp: double = 0;
+    repeat: bool = false;
+    text: string;
     fromUuid: string;
 }
 

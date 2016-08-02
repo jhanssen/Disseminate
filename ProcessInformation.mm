@@ -21,11 +21,6 @@
 #import <Cocoa/Cocoa.h>
 #include <QtMac>
 
-static std::string toStdString(NSString* str)
-{
-    return std::string([str UTF8String]);
-}
-
 static QString toQString(NSString* str)
 {
     return QString::fromUtf8([str UTF8String]);
