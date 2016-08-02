@@ -144,7 +144,7 @@ static Context context;
                                 loop->wakeup();
                                 break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
-                                auto event = Disseminate::GetMouseEvent(&data[0])->UnPack();
+                                auto event = Disseminate::Mouse::GetEvent(&data[0])->UnPack();
                                 context.lua->processRemoteEvent(event);
                                 loop->wakeup();
                                 break; }

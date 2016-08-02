@@ -1,4 +1,4 @@
-namespace Disseminate;
+namespace Disseminate.Mouse;
 
 enum Type : byte { Move, Press, Release }
 enum Button : byte { None, Left, Middle, Right }
@@ -8,7 +8,7 @@ struct Location {
     y: float;
 }
 
-table MouseEvent
+table Event
 {
     type: Type;
     button: Button;
@@ -21,4 +21,4 @@ table MouseEvent
     fromUuid: string;
 }
 
-root_type MouseEvent;
+root_type Event;

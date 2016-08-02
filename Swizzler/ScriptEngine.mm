@@ -27,23 +27,23 @@ protected:
     std::shared_ptr<T> internal;
 };
 
-class MouseEvent : public Detachable<Disseminate::MouseEventT>
+class MouseEvent : public Detachable<Disseminate::Mouse::EventT>
 {
 public:
     MouseEvent(int _type, int _button, double _x, double _y)
     {
-        internal = std::make_shared<Disseminate::MouseEventT>();
-        internal->type = static_cast<Disseminate::Type>(_type);
-        internal->button = static_cast<Disseminate::Button>(_button);
+        internal = std::make_shared<Disseminate::Mouse::EventT>();
+        internal->type = static_cast<Disseminate::Mouse::Type>(_type);
+        internal->button = static_cast<Disseminate::Mouse::Button>(_button);
         internal->windowNumber = 0;
         internal->modifiers = 0;
         internal->timestamp = timeIntervalSinceSystemStartup();
         internal->clickCount = 0;
         internal->pressure = 0.;
 
-        internal->location = std::make_unique<Disseminate::Location>(_x, _y);
+        internal->location = std::make_unique<Disseminate::Mouse::Location>(_x, _y);
     }
-    MouseEvent(std::unique_ptr<Disseminate::MouseEventT>& unique)
+    MouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& unique)
     {
         internal.reset(unique.release());
     }
@@ -55,10 +55,10 @@ public:
     void setY(double y) { detach(); internal->location->mutate_y(y); }
 
     int32_t type() { return internal->type; }
-    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Type>(arg); }
+    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Mouse::Type>(arg); }
 
     int32_t button() { return internal->button; }
-    void setButton(int32_t arg) { detach(); internal->button = static_cast<Disseminate::Button>(arg); };
+    void setButton(int32_t arg) { detach(); internal->button = static_cast<Disseminate::Mouse::Button>(arg); };
 
     int32_t windowNumber() { return internal->windowNumber; }
     void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
@@ -77,13 +77,13 @@ public:
 
     MouseEvent clone() { return MouseEvent(*this); }
 
-    Disseminate::MouseEventT* flat() { return internal.get(); }
+    Disseminate::Mouse::EventT* flat() { return internal.get(); }
 
 protected:
     virtual void detachInternal()
     {
-        std::shared_ptr<Disseminate::MouseEventT> other = internal;
-        internal = std::make_shared<Disseminate::MouseEventT>();
+        std::shared_ptr<Disseminate::Mouse::EventT> other = internal;
+        internal = std::make_shared<Disseminate::Mouse::EventT>();
         internal->type = other->type;
         internal->button = other->button;
         internal->windowNumber = other->windowNumber;
@@ -94,42 +94,42 @@ protected:
         internal->fromUuid = other->fromUuid;
 
         if (other->location) {
-            internal->location = std::make_unique<Disseminate::Location>(other->location->x(), other->location->y());
+            internal->location = std::make_unique<Disseminate::Mouse::Location>(other->location->x(), other->location->y());
         }
     }
 };
 
 MouseEvent::MouseEvent(NSEvent* event)
 {
-    internal = std::make_shared<Disseminate::MouseEventT>();
+    internal = std::make_shared<Disseminate::Mouse::EventT>();
     switch ([event type]) {
     case NSLeftMouseDown:
-        internal->type = Disseminate::Type_Press;
-        internal->button = Disseminate::Button_Left;
+        internal->type = Disseminate::Mouse::Type_Press;
+        internal->button = Disseminate::Mouse::Button_Left;
         break;
     case NSLeftMouseUp:
-        internal->type = Disseminate::Type_Release;
-        internal->button = Disseminate::Button_Left;
+        internal->type = Disseminate::Mouse::Type_Release;
+        internal->button = Disseminate::Mouse::Button_Left;
         break;
     case NSRightMouseDown:
-        internal->type = Disseminate::Type_Press;
-        internal->button = Disseminate::Button_Right;
+        internal->type = Disseminate::Mouse::Type_Press;
+        internal->button = Disseminate::Mouse::Button_Right;
         break;
     case NSRightMouseUp:
-        internal->type = Disseminate::Type_Release;
-        internal->button = Disseminate::Button_Right;
+        internal->type = Disseminate::Mouse::Type_Release;
+        internal->button = Disseminate::Mouse::Button_Right;
         break;
     case NSMouseMoved:
-        internal->type = Disseminate::Type_Move;
-        internal->button = Disseminate::Button_None;
+        internal->type = Disseminate::Mouse::Type_Move;
+        internal->button = Disseminate::Mouse::Button_None;
         break;
     case NSLeftMouseDragged:
-        internal->type = Disseminate::Type_Move;
-        internal->button = Disseminate::Button_Left;
+        internal->type = Disseminate::Mouse::Type_Move;
+        internal->button = Disseminate::Mouse::Button_Left;
         break;
     case NSRightMouseDragged:
-        internal->type = Disseminate::Type_Move;
-        internal->button = Disseminate::Button_Right;
+        internal->type = Disseminate::Mouse::Type_Move;
+        internal->button = Disseminate::Mouse::Button_Right;
         break;
     default:
         abort();
@@ -137,7 +137,7 @@ MouseEvent::MouseEvent(NSEvent* event)
     }
     {
         NSPoint location = [event locationInWindow];
-        internal->location = std::make_unique<Disseminate::Location>(location.x, location.y);
+        internal->location = std::make_unique<Disseminate::Mouse::Location>(location.x, location.y);
     }
     internal->modifiers = [event modifierFlags];
     internal->clickCount = [event clickCount];
@@ -219,13 +219,13 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_pressure", &MouseEvent::setPressure,
         "clone", &MouseEvent::clone);
 
-    setEnum(*state, "MouseMove", Disseminate::Type_Move);
-    setEnum(*state, "MousePress", Disseminate::Type_Press);
-    setEnum(*state, "MouseRelease", Disseminate::Type_Release);
-    setEnum(*state, "MouseButtonNone", Disseminate::Button_None);
-    setEnum(*state, "MouseButtonLeft", Disseminate::Button_Left);
-    setEnum(*state, "MouseButtonMiddle", Disseminate::Button_Middle);
-    setEnum(*state, "MouseButtonRight", Disseminate::Button_Right);
+    setEnum(*state, "MouseMove", Disseminate::Mouse::Type_Move);
+    setEnum(*state, "MousePress", Disseminate::Mouse::Type_Press);
+    setEnum(*state, "MouseRelease", Disseminate::Mouse::Type_Release);
+    setEnum(*state, "MouseButtonNone", Disseminate::Mouse::Button_None);
+    setEnum(*state, "MouseButtonLeft", Disseminate::Mouse::Button_Left);
+    setEnum(*state, "MouseButtonMiddle", Disseminate::Mouse::Button_Middle);
+    setEnum(*state, "MouseButtonRight", Disseminate::Mouse::Button_Right);
     setEnum(*state, "Add", enums::Add);
     setEnum(*state, "Remove", enums::Remove);
     setEnum(*state, "Local", ScriptEngine::Local);
@@ -294,7 +294,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
-            auto buffer = Disseminate::CreateMouseEvent(builder, flat);
+            auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
@@ -317,7 +317,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
-            auto buffer = Disseminate::CreateMouseEvent(builder, flat);
+            auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
                                          builder.GetBufferPointer() + builder.GetSize());
@@ -331,36 +331,36 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             int count = 1;
             float pressure = 1;
             switch (event.button()) {
-            case Disseminate::Button_Left:
+            case Disseminate::Mouse::Button_Left:
                 switch (event.type()) {
-                case Disseminate::Type_Press:
+                case Disseminate::Mouse::Type_Press:
                     type = NSLeftMouseDown;
                     break;
-                case Disseminate::Type_Release:
+                case Disseminate::Mouse::Type_Release:
                     type = NSLeftMouseUp;
                     break;
-                case Disseminate::Type_Move:
+                case Disseminate::Mouse::Type_Move:
                     type = NSLeftMouseDragged;
                     break;
                 }
                 break;
-           case Disseminate::Button_Middle:
+            case Disseminate::Mouse::Button_Middle:
 #warning handle me
                 break;
-            case Disseminate::Button_Right:
+            case Disseminate::Mouse::Button_Right:
                 switch (event.type()) {
-                case Disseminate::Type_Press:
+                case Disseminate::Mouse::Type_Press:
                     type = NSRightMouseDown;
                     break;
-                case Disseminate::Type_Release:
+                case Disseminate::Mouse::Type_Release:
                     type = NSRightMouseUp;
                     break;
-                case Disseminate::Type_Move:
+                case Disseminate::Mouse::Type_Move:
                     type = NSRightMouseDragged;
                     break;
                 }
                 break;
-            case Disseminate::Button_None:
+            case Disseminate::Mouse::Button_None:
                 count = 0;
                 pressure = 0;
                 type = NSMouseMoved;
@@ -500,7 +500,7 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
 }
 
-void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::MouseEventT>& eventData)
+void ScriptEngine::processRemoteEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData)
 {
     sel::HandlerScope scope(state->GetExceptionHandler());
 
