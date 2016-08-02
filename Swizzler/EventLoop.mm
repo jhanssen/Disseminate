@@ -165,7 +165,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                     while (it != end) {
                         event = (*it)->take();
                         NSPoint loc = [event locationInWindow];
-                        printf("sending fake event %lu window %lu evtno %ld %f %f ctx %p ts %f\n", [event type], [event windowNumber], [event eventNumber], loc.x, loc.y, [event context], [event timestamp]);
+                        printf("sending fake event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);
 
                         [app sendEvent:event];
                         ++it;

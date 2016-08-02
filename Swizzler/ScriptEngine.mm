@@ -149,7 +149,7 @@ MouseEvent::MouseEvent(NSEvent* event)
 class KeyEvent : public Detachable<Disseminate::Key::EventT>
 {
 public:
-    KeyEvent(int _type, int _code, double _x, double _y, bool _repeat = false, const std::string& _text = std::string())
+    KeyEvent(int _type, int _code, double _x, double _y)
     {
         internal = std::make_shared<Disseminate::Key::EventT>();
         internal->type = static_cast<Disseminate::Key::Type>(_type);
@@ -157,8 +157,7 @@ public:
         internal->windowNumber = 0;
         internal->modifiers = 0;
         internal->timestamp = timeIntervalSinceSystemStartup();
-        internal->text = _text;
-        internal->repeat = _repeat;
+        internal->repeat = false;
 
         internal->location = std::make_unique<Disseminate::Key::Location>(_x, _y);
     }
@@ -189,7 +188,7 @@ public:
     void setTimestamp(double arg) { detach(); internal->timestamp = arg; };
 
     std::string text() { return internal->text; }
-    void setText(const std::string& arg) { detach(); internal->text = arg; }
+    void setText(std::string arg) { detach(); internal->text = arg; }
 
     bool repeat() { return internal->repeat; }
     void setRepeat(bool arg) { detach(); internal->repeat = arg; }
@@ -317,7 +316,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "pressure", &MouseEvent::pressure,
         "set_pressure", &MouseEvent::setPressure,
         "clone", &MouseEvent::clone);
-    (*state)["KeyEvent"].SetClass<KeyEvent, int, int, double, double, bool, std::string>(
+    (*state)["KeyEvent"].SetClass<KeyEvent, int, int, double, double>(
         "type", &KeyEvent::type,
         "set_type", &KeyEvent::setType,
         "keycode", &KeyEvent::keyCode,
@@ -575,6 +574,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         printf("logInt -- %d\n", i);
     };
     (*state)("local foobar\n"
+             "local wnum = 0\n"
              "function acceptMouseEvent(type, me)\n"
              "  if me:x() > 380 then\n"
              "    logInt(776)\n"
@@ -617,10 +617,16 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  logInt(530)\n"
              "  return true\n"
              "end\n"
+             "local blockedKeys = 0\n"
              "function acceptKeyEvent(type, ke)\n"
              "  logString(\"key!!\")\n"
              "  logInt(ke:keycode())\n"
-             "  return false\n"
+             "  if blockedKeys < 2 then\n"
+             "    blockedKeys = blockedKeys + 1\n"
+             "    wnum = ke:windownumber()\n"
+             "    return false\n"
+             "  end\n"
+             "  return true\n"
              "end\n"
              "function clientChange(change, type, client)\n"
              "  logString(client)\n"
@@ -636,6 +642,10 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  if timeoutCnt > 3 then\n"
              "    logString(\"stopping\")\n"
              "    timers.stop(timeoutId)\n"
+             "    local keyPress = KeyEvent.new(enums.KeyDown, 0, 0, 0)\n"
+             "    keyPress:set_windownumber(wnum)\n"
+             "    keyPress:set_text(\"a\")\n"
+             "    keyEvent.inject(keyPress)\n"
              "  end\n"
              "  logString(\"timeout\")"
              "end\n"
