@@ -357,6 +357,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
     setEnum(*state, "Remove", enums::Remove);
     setEnum(*state, "Local", ScriptEngine::Local);
     setEnum(*state, "Remote", ScriptEngine::Remote);
+    setEnum(*state, "WhiteList", Disseminate::Settings::Type_WhiteList);
+    setEnum(*state, "BlackList", Disseminate::Settings::Type_BlackList);
 
     {
         auto clients = (*state)["clients"];
@@ -805,9 +807,41 @@ void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::Global
 
     auto global = keys["global"];
     auto globalkeys = global["keys"];
-    const size_t n = settings->keys.size();
+    global["type"] = static_cast<int>(settings->type);
+
+    size_t n = settings->keys.size();
     for (size_t i = 0; i < n; ++i) {
         makeKey(globalkeys[i + 1], settings->keys[i]);
     }
+
+    auto keybind = global["keybind"];
+    makeKey(keybind, *settings->toggleKeyboard);
+
+    auto mousebind = global["mousebind"];
+    makeKey(mousebind, *settings->toggleMouse);
+
+    auto exclusions = global["exclusions"];
+    n = settings->activeExclusions.size();
+    for (size_t i = 0; i < n; ++i) {
+        makeKey(exclusions[i + 1], settings->activeExclusions[i]);
+    }
+
+    auto specifics = global["specifics"];
+    for (const auto& s : settings->specifics) {
+        auto specific = specifics[s->uuid];
+        auto specifickeys = specific["keys"];
+        specific["type"] = static_cast<int>(s->type);
+
+        n = s->keys.size();
+        for (size_t i = 0; i < n; ++i) {
+            makeKey(specifickeys[i + 1], s->keys[i]);
+        }
+    }
+
     printf("made %zu keys\n", n);
+
+    (*state)("for k,v in ipairs(keys.global.keys) do\n"
+             //"  logString(k)\n"
+             "  logInt(v.keycode)\n"
+             "end\n");
 }
