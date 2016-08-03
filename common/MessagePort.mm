@@ -100,8 +100,10 @@ MessagePortRemote::MessagePortRemote(const std::string& name)
 
 MessagePortRemote::~MessagePortRemote()
 {
-    if (mPort)
+    if (mPort) {
+        CFMessagePortInvalidate(mPort);
         CFRelease(mPort);
+    }
 }
 
 void MessagePortRemote::invalidatedCallback(CFMessagePortRef port, void *info)
