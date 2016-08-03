@@ -23,6 +23,7 @@
 #include "Helpers.h"
 #include "TemplateChooser.h"
 #include "ui_MainWindow.h"
+#include <memory>
 #include <FlatbufferTypes.h>
 #include <Settings_generated.h>
 #include <QMessageBox>
@@ -129,6 +130,13 @@ void MainWindow::pushSettings()
     for (int i = 0; i < keyCount; ++i) {
         KeyItem* item = static_cast<KeyItem*>(ui->keyList->item(i));
         global.keys.push_back({ item->key, item->mask });
+    }
+
+    global.toggleKeyboard = std::make_unique<Disseminate::Settings::Key>(prefs.globalKey.first, prefs.globalKey.second);
+    global.toggleMouse = std::make_unique<Disseminate::Settings::Key>(prefs.globalMouse.first, prefs.globalMouse.second);
+
+    for (auto ex : prefs.exclusions) {
+        global.activeExclusions.push_back({ ex.first, ex.second });
     }
 
     flatbuffers::FlatBufferBuilder builder;

@@ -19,6 +19,11 @@ table Global
     type: Type;
     keys: [Key];
     specifics: [Client];
+
+    toggleMouse: Key;
+    toggleKeyboard: Key;
+
+    activeExclusions: [Key];
 }
 
 root_type Global;

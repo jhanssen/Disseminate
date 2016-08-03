@@ -5,7 +5,10 @@ cmake_policy(SET CMP0042 NEW)
 
 include(ExternalProject)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
 set(COMMON_INCLUDE_DIR "../common")

@@ -13,6 +13,12 @@ include_directories(flatbuffers/include buffers common)
 
 add_subdirectory(Swizzler)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
