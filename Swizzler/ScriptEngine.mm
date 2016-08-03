@@ -799,6 +799,7 @@ void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::Global
         obj["keycode"] = static_cast<double>(key.keyCode());
         obj["modifiers"] = static_cast<double>(key.modifiers());
     };
+
     auto keys = (*state)["keys"];
     keys.clear();
 
@@ -806,13 +807,7 @@ void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::Global
     auto globalkeys = global["keys"];
     const size_t n = settings->keys.size();
     for (size_t i = 0; i < n; ++i) {
-        makeKey(globalkeys[i], settings->keys[i]);
+        makeKey(globalkeys[i + 1], settings->keys[i]);
     }
-
     printf("made %zu keys\n", n);
-
-    (*state)("for k,v in ipairs(keys.global.keys) do\n"
-             //"  logString(k)\n"
-             "  logInt(v.keycode)\n"
-             "end\n");
 }
