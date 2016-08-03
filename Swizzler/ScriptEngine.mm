@@ -297,7 +297,7 @@ static inline void setEnum(sel::State& state, const std::string& name, int c)
 }
 
 ScriptEngine::ScriptEngine(const std::string& uuid)
-    : state(std::make_unique<sel::State>()),
+    : state(std::make_unique<sel::State>(true)),
       data(std::make_unique<ScriptEngineData>(uuid))
 {
     state->HandleExceptionsPrintingToStdOut();
@@ -795,8 +795,24 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
 
 void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::GlobalT>& settings)
 {
-    for (const auto& key : settings->keys) {
-        printf("got setting key %lld %llu\n",
-               key.keyCode(), key.modifiers());
+    auto makeKey = [this](auto obj, auto key) {
+        obj["keycode"] = static_cast<double>(key.keyCode());
+        obj["modifiers"] = static_cast<double>(key.modifiers());
+    };
+    auto keys = (*state)["keys"];
+    keys.clear();
+
+    auto global = keys["global"];
+    auto globalkeys = global["keys"];
+    const size_t n = settings->keys.size();
+    for (size_t i = 0; i < n; ++i) {
+        makeKey(globalkeys[i], settings->keys[i]);
     }
+
+    printf("made %zu keys\n", n);
+
+    (*state)("for k,v in ipairs(keys.global.keys) do\n"
+             //"  logString(k)\n"
+             "  logInt(v.keycode)\n"
+             "end\n");
 }
