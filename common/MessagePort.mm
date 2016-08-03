@@ -120,7 +120,7 @@ bool MessagePortRemote::send(int32_t id, const std::vector<uint8_t>& data) const
     if (!mPort)
         return false;
     const CFTimeInterval timeout = 10.0;
-    CFDataRef dataref = data.empty() ? nullptr : CFDataCreate(NULL, &data[0], data.size() + 1);
+    CFDataRef dataref = data.empty() ? nullptr : CFDataCreate(NULL, &data[0], data.size());
     SInt32 status = CFMessagePortSendRequest(mPort,
                                              id,
                                              dataref,

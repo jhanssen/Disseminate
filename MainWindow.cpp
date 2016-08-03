@@ -23,6 +23,7 @@
 #include "Helpers.h"
 #include "TemplateChooser.h"
 #include "ui_MainWindow.h"
+#include <FlatbufferTypes.h>
 #include <Settings_generated.h>
 #include <QMessageBox>
 #include <QSettings>
@@ -65,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent) :
     messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
             const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
             printf("got message %d -> %s\n", id, name.c_str());
+
             auto remote = std::make_shared<MessagePortRemote>(name);
             // std::weak_ptr<MessagePortRemote> weak = remote;
             remote->onInvalidated([this, id/*, weak*/]() {
@@ -117,6 +119,27 @@ void MainWindow::stopBroadcast()
 
 void MainWindow::pushSettings()
 {
+    Disseminate::Settings::GlobalT global;
+    if (ui->whitelistRadio->isChecked())
+        global.type = Disseminate::Settings::Type_WhiteList;
+    else
+        global.type = Disseminate::Settings::Type_BlackList;
+
+    const int keyCount = ui->keyList->count();
+    for (int i = 0; i < keyCount; ++i) {
+        KeyItem* item = static_cast<KeyItem*>(ui->keyList->item(i));
+        global.keys.push_back({ item->key, item->mask });
+    }
+
+    flatbuffers::FlatBufferBuilder builder;
+    auto buffer = Disseminate::Settings::CreateGlobal(builder, &global);
+    builder.Finish(buffer);
+
+    std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                 builder.GetBufferPointer() + builder.GetSize());
+    for (auto r : remotePorts) {
+        r.second->send(Disseminate::FlatbufferTypes::Settings, message);
+    }
 }
 
 void MainWindow::addKey()

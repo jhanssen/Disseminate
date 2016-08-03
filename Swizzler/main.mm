@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <FlatbufferTypes.h>
 #include <MouseEvent_generated.h>
+#include <Settings_generated.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
 
@@ -151,6 +152,11 @@ static Context context;
                             case Disseminate::FlatbufferTypes::KeyEvent: {
                                 auto event = Disseminate::Key::GetEvent(&data[0])->UnPack();
                                 context.lua->processRemoteKeyEvent(event);
+                                loop->wakeup();
+                                break; }
+                            case Disseminate::FlatbufferTypes::Settings: {
+                                auto event = Disseminate::Settings::GetGlobal(&data[0])->UnPack();
+                                context.lua->processSettings(event);
                                 loop->wakeup();
                                 break; }
                             default:

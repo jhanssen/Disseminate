@@ -792,3 +792,11 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
     }
     return true;
 }
+
+void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::GlobalT>& settings)
+{
+    for (const auto& key : settings->keys) {
+        printf("got setting key %lld %llu\n",
+               key.keyCode(), key.modifiers());
+    }
+}

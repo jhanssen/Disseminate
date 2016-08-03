@@ -5,6 +5,7 @@
 #include <selene.h>
 #include <MouseEvent_generated.h>
 #include <KeyEvent_generated.h>
+#include <Settings_generated.h>
 #include <AppKit/NSEvent.h>
 
 class ScriptEngineData;
@@ -17,6 +18,8 @@ public:
     ~ScriptEngine();
 
     void evaluate(const std::string& code);
+
+    void processSettings(std::unique_ptr<Disseminate::Settings::GlobalT>& settings);
 
     void processRemoteMouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData);
     void processRemoteKeyEvent(std::unique_ptr<Disseminate::Key::EventT>& eventData);

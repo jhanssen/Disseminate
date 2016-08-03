@@ -10,10 +10,10 @@ struct Location {
 table Event
 {
     type: Type;
-    keyCode: int;
+    keyCode: long;
     location: Location;
     windowNumber: int;
-    modifiers: ushort = 0;
+    modifiers: ulong = 0;
     timestamp: double = 0;
     repeat: bool = false;
     text: string;

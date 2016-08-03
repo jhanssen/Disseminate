@@ -3,8 +3,8 @@ namespace Disseminate.Settings;
 enum Type : byte { WhiteList, BlackList }
 
 struct Key {
-    keyCode: int;
-    modifiers: ushort;
+    keyCode: long;
+    modifiers: ulong;
 }
 
 table Client
