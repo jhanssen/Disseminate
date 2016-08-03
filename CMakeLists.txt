@@ -82,6 +82,7 @@ set(FLATFILES
     )
 
 buffers_to_cpp(flatbufferfiles buffers "${FLATFILES}")
+add_dependencies(flatbufferfiles flatc)
 add_dependencies(Disseminate flatbufferfiles)
 
 # Use the Widgets module from Qt 5.
