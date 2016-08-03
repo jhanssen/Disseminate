@@ -33,13 +33,13 @@ class Disseminate;
 
 class QListWidgetItem;
 
-class Disseminate : public QMainWindow
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit Disseminate(QWidget *parent = 0);
-    ~Disseminate();
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
 
 private slots:
     void keyAdded(int64_t key, uint64_t mask);
@@ -63,6 +63,8 @@ private slots:
     void updateBindings();
 
     void templateChosen(int32_t psn, const QString& name);
+
+    void pushSettings();
 
 private:
     void saveConfig();

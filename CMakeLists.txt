@@ -43,7 +43,7 @@ set(COCOA_LIBRARIES
 
 set(SOURCES
     main.cpp
-    Disseminate.cpp
+    MainWindow.cpp
     Utils.mm
     ProcessInformation.mm
     KeyInput.cpp
@@ -78,6 +78,7 @@ endfunction()
 set(FLATFILES
     buffers/MouseEvent.fbs
     buffers/KeyEvent.fbs
+    buffers/Settings.fbs
     )
 
 buffers_to_cpp(flatbufferfiles buffers "${FLATFILES}")

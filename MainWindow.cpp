@@ -16,18 +16,19 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "Disseminate.h"
+#include "MainWindow.h"
 #include "KeyInput.h"
 #include "Item.h"
 #include "Utils.h"
 #include "Helpers.h"
 #include "TemplateChooser.h"
-#include "ui_Disseminate.h"
+#include "ui_MainWindow.h"
+#include <Settings_generated.h>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
 
-Disseminate::Disseminate(QWidget *parent) :
+MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Disseminate),
     broadcasting(false),
@@ -38,19 +39,21 @@ Disseminate::Disseminate(QWidget *parent) :
     loadConfig();
     applyConfig();
 
-    connect(ui->clientList, &QListWidget::itemDoubleClicked, this, &Disseminate::clientDoubleClicked);
+    connect(ui->clientList, &QListWidget::itemDoubleClicked, this, &MainWindow::clientDoubleClicked);
 
-    connect(ui->actionStart, &QAction::triggered, this, &Disseminate::startBroadcast);
-    connect(ui->actionStop, &QAction::triggered, this, &Disseminate::stopBroadcast);
-    connect(ui->actionTemplates, &QAction::triggered, this, &Disseminate::templates);
+    connect(ui->actionStart, &QAction::triggered, this, &MainWindow::startBroadcast);
+    connect(ui->actionStop, &QAction::triggered, this, &MainWindow::stopBroadcast);
+    connect(ui->actionTemplates, &QAction::triggered, this, &MainWindow::templates);
 
-    connect(ui->actionPreferences, &QAction::triggered, this, &Disseminate::preferences);
+    connect(ui->actionPreferences, &QAction::triggered, this, &MainWindow::preferences);
 
-    connect(ui->addKey, &QPushButton::clicked, this, &Disseminate::addKey);
-    connect(ui->removeKey, &QPushButton::clicked, this, &Disseminate::removeKey);
+    connect(ui->addKey, &QPushButton::clicked, this, &MainWindow::addKey);
+    connect(ui->removeKey, &QPushButton::clicked, this, &MainWindow::removeKey);
 
-    connect(ui->whitelistRadio, &QRadioButton::toggled, this, &Disseminate::whiteListChanged);
-    connect(ui->blacklistRadio, &QRadioButton::toggled, this, &Disseminate::blackListChanged);
+    connect(ui->whitelistRadio, &QRadioButton::toggled, this, &MainWindow::whiteListChanged);
+    connect(ui->blacklistRadio, &QRadioButton::toggled, this, &MainWindow::blackListChanged);
+
+    connect(ui->pushSettings, &QPushButton::clicked, this, &MainWindow::pushSettings);
 
     QTimer::singleShot(50, [this]() {
             if (broadcast::checkAllowsAccessibility() == broadcast::Unknown) {
@@ -76,14 +79,14 @@ Disseminate::Disseminate(QWidget *parent) :
         });
 }
 
-Disseminate::~Disseminate()
+MainWindow::~MainWindow()
 {
     //broadcast::stop();
     broadcast::cleanup();
     delete ui;
 }
 
-void Disseminate::startBroadcast()
+void MainWindow::startBroadcast()
 {
     if (broadcasting)
         return;
@@ -101,7 +104,7 @@ void Disseminate::startBroadcast()
     ui->actionStop->setEnabled(true);
 }
 
-void Disseminate::stopBroadcast()
+void MainWindow::stopBroadcast()
 {
     if (!broadcasting)
         return;
@@ -112,18 +115,22 @@ void Disseminate::stopBroadcast()
     broadcasting = false;
 }
 
-void Disseminate::addKey()
+void MainWindow::pushSettings()
+{
+}
+
+void MainWindow::addKey()
 {
     KeyInput readKey(this);
     if (readKey.valid()) {
-        connect(&readKey, &KeyInput::keyAdded, this, &Disseminate::keyAdded);
+        connect(&readKey, &KeyInput::keyAdded, this, &MainWindow::keyAdded);
         readKey.exec();
     } else {
         QMessageBox::critical(this, "Unable to capture key", "Unable to capture key, ensure that the app is allowed to control your computer");
     }
 }
 
-void Disseminate::removeKey()
+void MainWindow::removeKey()
 {
     const auto& items = ui->keyList->selectedItems();
     for (auto& item : items) {
@@ -136,7 +143,7 @@ void Disseminate::removeKey()
     saveConfig();
 }
 
-void Disseminate::keyAdded(int64_t key, uint64_t mask)
+void MainWindow::keyAdded(int64_t key, uint64_t mask)
 {
     const QString name = helpers::keyToQString(key, mask);
     if (!helpers::contains(ui->keyList, name)) {
@@ -148,7 +155,7 @@ void Disseminate::keyAdded(int64_t key, uint64_t mask)
     }
 }
 
-void Disseminate::whiteListChanged()
+void MainWindow::whiteListChanged()
 {
     if (ui->whitelistRadio->isChecked()) {
         //broadcast::setKeyType(broadcast::WhiteList);
@@ -158,7 +165,7 @@ void Disseminate::whiteListChanged()
     }
 }
 
-void Disseminate::blackListChanged()
+void MainWindow::blackListChanged()
 {
     if (ui->blacklistRadio->isChecked()) {
         //broadcast::setKeyType(broadcast::BlackList);
@@ -168,37 +175,37 @@ void Disseminate::blackListChanged()
     }
 }
 
-void Disseminate::templates()
+void MainWindow::templates()
 {
     Templates templates(this, temps);
-    connect(&templates, &Templates::configChanged, this, &Disseminate::templatesChanged);
+    connect(&templates, &Templates::configChanged, this, &MainWindow::templatesChanged);
 
     templates.exec();
 }
 
-void Disseminate::templatesChanged(const Templates::Config& cfg)
+void MainWindow::templatesChanged(const Templates::Config& cfg)
 {
     temps = cfg;
     saveConfig();
     applyConfig();
 }
 
-void Disseminate::preferences()
+void MainWindow::preferences()
 {
     Preferences preferences(this, prefs);
-    connect(&preferences, &Preferences::configChanged, this, &Disseminate::preferencesChanged);
+    connect(&preferences, &Preferences::configChanged, this, &MainWindow::preferencesChanged);
 
     preferences.exec();
 }
 
-void Disseminate::preferencesChanged(const Preferences::Config& cfg)
+void MainWindow::preferencesChanged(const Preferences::Config& cfg)
 {
     prefs = cfg;
     saveConfig();
     applyConfig();
 }
 
-void Disseminate::loadConfig()
+void MainWindow::loadConfig()
 {
     QSettings settings("jhanssen", "Disseminate");
     QVariant windows = settings.value("preferences/automaticWindows");
@@ -301,7 +308,7 @@ void Disseminate::loadConfig()
     }
 }
 
-void Disseminate::saveConfig()
+void MainWindow::saveConfig()
 {
     QSettings settings("jhanssen", "Disseminate");
     settings.setValue("preferences/automaticWindows", prefs.automaticWindows);
@@ -371,13 +378,13 @@ void Disseminate::saveConfig()
     settings.setValue("exclusions", exclusions);
 }
 
-void Disseminate::applyConfig()
+void MainWindow::applyConfig()
 {
     reloadClients();
     updateBindings();
 }
 
-void Disseminate::reloadClients()
+void MainWindow::reloadClients()
 {
     const bool cap = broadcasting;
     if (cap)
@@ -396,7 +403,7 @@ void Disseminate::reloadClients()
         startBroadcast();
 }
 
-void Disseminate::updateBindings()
+void MainWindow::updateBindings()
 {
 #warning implement me
 
@@ -418,18 +425,18 @@ void Disseminate::updateBindings()
     */
 }
 
-void Disseminate::clientDoubleClicked(QListWidgetItem* item)
+void MainWindow::clientDoubleClicked(QListWidgetItem* item)
 {
     if (!item)
         return;
     ClientItem* witem = static_cast<ClientItem*>(item);
     TemplateChooser chooser(this, chosenTemplates[witem->wpid], temps.keys(), witem->wpid, witem->wid);
-    connect(&chooser, &TemplateChooser::chosen, this, &Disseminate::templateChosen);
+    connect(&chooser, &TemplateChooser::chosen, this, &MainWindow::templateChosen);
 
     chooser.exec();
 }
 
-void Disseminate::templateChosen(int32_t pid, const QString& name)
+void MainWindow::templateChosen(int32_t pid, const QString& name)
 {
     chosenTemplates[pid] = name;
 #warning fixme

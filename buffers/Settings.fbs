@@ -1,0 +1,24 @@
+namespace Disseminate.Settings;
+
+enum Type : byte { WhiteList, BlackList }
+
+struct Key {
+    keyCode: int;
+    modifiers: ushort;
+}
+
+table Client
+{
+    type: Type;
+    keys: [Key];
+    uuid: string;
+}
+
+table Global
+{
+    type: Type;
+    keys: [Key];
+    specifics: [Client];
+}
+
+root_type Global;

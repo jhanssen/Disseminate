@@ -75,6 +75,8 @@ public:
     double pressure() { return internal->pressure; }
     void setPressure(double arg) { detach(); internal->pressure = arg; }
 
+    std::string fromUuid() { return internal->fromUuid; }
+
     MouseEvent clone() { return MouseEvent(*this); }
 
     Disseminate::Mouse::EventT* flat() { return internal.get(); }
@@ -193,6 +195,8 @@ public:
     bool repeat() { return internal->repeat; }
     void setRepeat(bool arg) { detach(); internal->repeat = arg; }
 
+    std::string fromUuid() { return internal->fromUuid; }
+
     KeyEvent clone() { return KeyEvent(*this); }
 
     Disseminate::Key::EventT* flat() { return internal.get(); }
@@ -297,6 +301,9 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
       data(std::make_unique<ScriptEngineData>(uuid))
 {
     state->HandleExceptionsPrintingToStdOut();
+    (*state)["uuid"] = [this]() {
+        return data->uuid;
+    };
 
     (*state)["MouseEvent"].SetClass<MouseEvent, int, int, double, double>(
         "type", &MouseEvent::type,
@@ -315,6 +322,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_clickCount", &MouseEvent::setClickCount,
         "pressure", &MouseEvent::pressure,
         "set_pressure", &MouseEvent::setPressure,
+        "fromUuid", &MouseEvent::fromUuid,
         "clone", &MouseEvent::clone);
     (*state)["KeyEvent"].SetClass<KeyEvent, int, int, double, double>(
         "type", &KeyEvent::type,
@@ -333,6 +341,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_text", &KeyEvent::setText,
         "repeat", &KeyEvent::repeat,
         "set_repeat", &KeyEvent::setRepeat,
+        "fromUuid", &KeyEvent::fromUuid,
         "clone", &KeyEvent::clone);
 
     setEnum(*state, "MouseMove", Disseminate::Mouse::Type_Move);
@@ -642,7 +651,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  if timeoutCnt > 3 then\n"
              "    logString(\"stopping\")\n"
              "    timers.stop(timeoutId)\n"
-             "    local keyPress = KeyEvent.new(enums.KeyDown, 0, 0, 0)\n"
+             "    local keyPress = KeyEvent.new(enums.KeyUp, 0, 0, 0)\n"
              "    keyPress:set_windownumber(wnum)\n"
              "    keyPress:set_text(\"a\")\n"
              "    keyEvent.inject(keyPress)\n"
