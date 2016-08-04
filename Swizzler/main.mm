@@ -144,6 +144,10 @@ static Context context;
                                 context.lua->unregisterClient(ScriptEngine::Remote, toString(data));
                                 loop->wakeup();
                                 break;
+                            case Disseminate::FlatbufferTypes::RemoteClear:
+                                context.lua->clearClients(ScriptEngine::Remote);
+                                loop->wakeup();
+                                break;
                             case Disseminate::FlatbufferTypes::MouseEvent: {
                                 auto event = Disseminate::Mouse::GetEvent(&data[0])->UnPack();
                                 context.lua->processRemoteMouseEvent(event);
@@ -165,7 +169,7 @@ static Context context;
                         });
 
                     loop->onEvent([](const std::shared_ptr<EventLoopEvent>& event) -> bool {
-                            printf("iteration\n");
+                            //printf("iteration\n");
                             return context.lua->processLocalEvent(event);
                         });
                     loop->wakeup();

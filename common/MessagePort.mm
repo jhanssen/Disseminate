@@ -133,6 +133,14 @@ bool MessagePortRemote::send(int32_t id, const std::vector<uint8_t>& data) const
     return (status == kCFMessagePortSuccess);
 }
 
+bool MessagePortRemote::send(int32_t id, const std::string& data) const
+{
+    std::vector<uint8_t> udata;
+    udata.resize(data.size());
+    memcpy(&udata[0], &data[0], data.size());
+    return send(id, udata);
+}
+
 bool MessagePortRemote::send(int32_t id) const
 {
     return send(id, std::vector<uint8_t>());

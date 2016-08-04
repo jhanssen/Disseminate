@@ -77,7 +77,7 @@ MainWindow::MainWindow(QWidget *parent) :
                     remotePorts.erase(id);
                     reloadClients();
                 });
-            remotePorts[id] = remote;
+            remotePorts[id] = std::make_pair(name, remote);
             reloadClients();
         });
 }
@@ -146,8 +146,20 @@ void MainWindow::pushSettings()
     std::vector<uint8_t> message(builder.GetBufferPointer(),
                                  builder.GetBufferPointer() + builder.GetSize());
     for (auto r : remotePorts) {
-        r.second->send(Disseminate::FlatbufferTypes::Settings, message);
+        r.second.second->send(Disseminate::FlatbufferTypes::Settings, message);
     }
+
+    // push over all remotes
+    for (auto r : remotePorts) {
+        r.second.second->send(Disseminate::FlatbufferTypes::RemoteClear);
+        const auto& self = r.second.first;
+        for (auto o : remotePorts) {
+            if (o.second.first != self) {
+                r.second.second->send(Disseminate::FlatbufferTypes::RemoteAdd, o.second.first);
+            }
+        }
+    }
+
 }
 
 void MainWindow::addKey()

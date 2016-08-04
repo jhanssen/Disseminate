@@ -756,6 +756,37 @@ void ScriptEngine::unregisterClient(ClientType type, const std::string& uuid)
     }
 }
 
+void ScriptEngine::clearClients(ClientType type)
+{
+    std::vector<std::string> removed;
+
+    {
+        auto client = data->clients.begin();
+        const auto end = data->clients.end();
+        while (client != end) {
+            if (client->first == type) {
+                removed.push_back(client->second);
+                if (type == Remote)
+                    data->removePort(client->second);
+                client = data->clients.erase(client);
+            } else {
+                ++client;
+            }
+        }
+    }
+
+    sel::HandlerScope scope(state->GetExceptionHandler());
+
+    auto on = data->clientChangeFunctions.begin();
+    const auto end = data->clientChangeFunctions.end();
+    while (on != end) {
+        for (const auto& uuid : removed) {
+            (*on)(enums::Remove, type, uuid);
+        }
+        ++on;
+    }
+}
+
 void ScriptEngine::processRemoteMouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& eventData)
 {
     sel::HandlerScope scope(state->GetExceptionHandler());

@@ -8,8 +8,9 @@ enum {
     MouseEvent = 2,
     RemoteAdd = 3,
     RemoteRemove = 4,
-    KeyEvent = 5,
-    Settings = 6
+    RemoteClear = 5,
+    KeyEvent = 6,
+    Settings = 7
 };
 }
 }

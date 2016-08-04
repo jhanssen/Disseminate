@@ -40,6 +40,7 @@ public:
 
     bool send(int32_t id) const ;
     bool send(int32_t id, const std::vector<uint8_t>& data) const;
+    bool send(int32_t id, const std::string& data) const;
     bool send(const std::vector<uint8_t>& data) const;
 
     typedef std::function<void()> InvalidatedCallback;

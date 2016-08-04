@@ -80,7 +80,7 @@ private:
     QMap<int32_t, QString> chosenTemplates;
 
     MessagePortLocal messagePort;
-    std::map<int32_t, std::shared_ptr<MessagePortRemote> > remotePorts;
+    std::map<int32_t, std::pair<std::string, std::shared_ptr<MessagePortRemote> > > remotePorts;
 };
 
 #endif // DISSEMINATE_H

@@ -29,6 +29,7 @@ public:
     enum ClientType { Local, Remote };
     void registerClient(ClientType type, const std::string& uuid);
     void unregisterClient(ClientType type, const std::string& uuid);
+    void clearClients(ClientType type);
 
 private:
     std::unique_ptr<sel::State> state;

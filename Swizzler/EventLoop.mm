@@ -130,7 +130,7 @@ typedef NSEvent* (*NextEventSignature)(id self, SEL _cmd, NSUInteger mask, NSDat
 static IMP sNextEventMatchingMaskImp = NULL;
 static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag)
 {
-    printf("next eventing\n");
+    //printf("next eventing\n");
     ScopedPool pool;
     NextEventSignature sig = (NextEventSignature)sNextEventMatchingMaskImp;
     NSEvent* event;
@@ -147,11 +147,11 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         }
         event = sig(self, _cmd, mask, exp, mode, flag);
         if (!event) {
-            assert(exp);
-            if (exp == expiration)
-                return 0;
-            fireTimers();
-            continue;
+            if (exp != expiration) {
+                fireTimers();
+                continue;
+            }
+            return 0;
         }
         if (exp && exp != expiration)
             fireTimers();
