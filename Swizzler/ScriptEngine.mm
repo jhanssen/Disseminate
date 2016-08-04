@@ -183,7 +183,7 @@ public:
     int32_t windowNumber() { return internal->windowNumber; }
     void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
 
-    uint16_t modifiers() { return internal->modifiers; }
+    uint32_t modifiers() { return internal->modifiers; }
     void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
 
     double timestamp() { return internal->timestamp; }
@@ -584,6 +584,45 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
     (*state)["logInt"] = [](int i) {
         printf("logInt -- %d\n", i);
     };
+#if 1
+    (*state)("function acceptKeys(type, ke)\n"
+             "  logInt(1)\n"
+             "  if type == enums.Remote then\n"
+             "    keyEvent.inject(ke)\n"
+             "    return true\n"
+             "  end\n"
+             "  logInt(2)\n"
+             "  local code = ke:keycode()\n"
+             "  local mods = ke:modifiers()\n"
+             "  logInt(3)\n"
+             "  if keys and keys.global then\n"
+             "    if keys.global.keys then\n"
+             "      for k,v in ipairs(keys.global.keys) do\n"
+             "        logString(\"testing\")\n"
+             "        logInt(v.modifiers)\n"
+             "        logInt(mods)\n"
+             "        if v.keycode == code and v.modifiers == mods then\n"
+             "          logInt(30)\n"
+             "          keyEvent.sendToAll(ke)\n"
+             "        end\n"
+             "      end\n"
+             "    end\n"
+             "    logInt(4)\n"
+             "    if keys.global.exclusions then\n"
+             "      for k,v in ipairs(keys.global.exclusions) do\n"
+             "        if v.keycode == code and v.modifiers == mods then\n"
+             "          logInt(40)\n"
+             "          return false\n"
+             "        end\n"
+             "      end\n"
+             "    end\n"
+             "  end\n"
+             "  logInt(5)\n"
+             "  return true\n"
+             "end\n"
+             "keyEvent.on(acceptKeys)\n");
+#endif
+#if 0
     (*state)("local foobar\n"
              "local wnum = 0\n"
              "function acceptMouseEvent(type, me)\n"
@@ -668,6 +707,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "mouseEvent.on(acceptOtherMouseEvent)\n"
              //"mouseEvent.on(acceptMouseEvent)\n"
         );
+#endif
 }
 
 ScriptEngine::~ScriptEngine()
@@ -813,6 +853,7 @@ void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::Global
     for (size_t i = 0; i < n; ++i) {
         makeKey(globalkeys[i + 1], settings->keys[i]);
     }
+    printf("made %zu keys\n", n);
 
     auto keybind = global["keybind"];
     makeKey(keybind, *settings->toggleKeyboard);
@@ -837,8 +878,6 @@ void ScriptEngine::processSettings(std::unique_ptr<Disseminate::Settings::Global
             makeKey(specifickeys[i + 1], s->keys[i]);
         }
     }
-
-    printf("made %zu keys\n", n);
 
     (*state)("for k,v in ipairs(keys.global.keys) do\n"
              //"  logString(k)\n"
