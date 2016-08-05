@@ -552,16 +552,18 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         };
         keyEvent["sendToAll"] = [this](KeyEvent event) {
             flatbuffers::FlatBufferBuilder builder;
-            auto flat = event.flat();
-            flat->fromUuid = data->uuid;
-            auto buffer = Disseminate::Key::CreateEvent(builder, flat);
-            builder.Finish(buffer);
-            std::vector<uint8_t> message(builder.GetBufferPointer(),
-                                         builder.GetBufferPointer() + builder.GetSize());
 
             auto port = data->ports.cbegin();
             const auto end = data->ports.cend();
             while (port != end) {
+                auto flat = event.flat();
+                flat->fromUuid = data->uuid;
+                flat->windowNumber = data->windowNumbers[port->first];
+                auto buffer = Disseminate::Key::CreateEvent(builder, flat);
+                builder.Finish(buffer);
+                std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                             builder.GetBufferPointer() + builder.GetSize());
+
                 port->second->send(Disseminate::FlatbufferTypes::KeyEvent, message);
                 ++port;
             }
@@ -577,6 +579,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
+            flat->windowNumber = data->windowNumbers[to];
             auto buffer = Disseminate::Key::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),

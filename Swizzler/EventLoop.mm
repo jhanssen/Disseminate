@@ -138,6 +138,70 @@ struct {
     float dx, dy;
 } static sDelta = { false, 0., 0, };
 
+static inline void sendEvent(NSEvent* event)
+{
+    auto wno = [event windowNumber];
+    NSWindow* win = [[NSApplication sharedApplication] windowWithWindowNumber:wno];
+    if (!win) {
+        printf("out 1\n");
+        return;
+    }
+    /*
+    NSView* view = [win contentView];
+    if (!view) {
+        printf("out 2\n");
+        return;
+    }
+    NSView* target = [view hitTest:[event locationInWindow]];
+    if (!target) {
+        printf("out 3\n");
+        return;
+        }
+    */
+    NSResponder* responder = [win firstResponder];
+    if (!responder) {
+        printf("out 2\n");
+        return;
+    }
+    if (![responder isKindOfClass:[NSView class]]) {
+        printf("out 3\n");
+        return;
+    }
+    NSView* target = (NSView*)responder;
+    switch ([event type]) {
+    case NSLeftMouseDown:
+        [target mouseDown:event];
+        break;
+    case NSRightMouseDown:
+        [target rightMouseDown:event];
+        break;
+    case NSLeftMouseUp:
+        [target mouseUp:event];
+        break;
+    case NSRightMouseUp:
+        [target rightMouseUp:event];
+        break;
+    case NSMouseMoved:
+        [target mouseMoved:event];
+        break;
+    case NSLeftMouseDragged:
+        [target mouseDragged:event];
+        break;
+    case NSRightMouseDragged:
+        [target rightMouseDragged:event];
+        break;
+    case NSKeyDown:
+        [target keyDown:event];
+        break;
+    case NSKeyUp:
+        [target keyUp:event];
+        break;
+    default:
+        printf("no joy\n");
+        break;
+    }
+}
+
 typedef NSEvent* (*NextEventSignature)(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag);
 static IMP sNextEventMatchingMaskImp = NULL;
 static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag)
@@ -187,7 +251,8 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                         NSPoint loc = [event locationInWindow];
                         printf("sending fake event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);
 
-                        [app sendEvent:event];
+                        sendEvent(event);
+                        // [app sendEvent:event];
                         ++it;
                     }
                     sPendingEvents.clear();
@@ -206,8 +271,16 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         }
         break;
     }
-    if (sDelta.has)
-        sDelta.has = false;
+    switch ([event type]) {
+    case NSMouseMoved:
+    case NSLeftMouseDragged:
+    case NSRightMouseDragged:
+        if (sDelta.has)
+            sDelta.has = false;
+        break;
+    default:
+        break;
+    }
     return event;
 }
 
@@ -226,7 +299,6 @@ typedef CGFloat (*FloatSignature)(id self, SEL _cmd);
 static IMP sDeltaX = NULL;
 static CGFloat patchedDeltaX(id self, SEL _cmd)
 {
-    printf("delta x\n");
     if (sDelta.has)
         return sDelta.dx;
     FloatSignature sig = (FloatSignature)sDeltaX;
@@ -235,7 +307,6 @@ static CGFloat patchedDeltaX(id self, SEL _cmd)
 static IMP sDeltaY = NULL;
 static CGFloat patchedDeltaY(id self, SEL _cmd)
 {
-    printf("delta y\n");
     if (sDelta.has)
         return sDelta.dy;
     FloatSignature sig = (FloatSignature)sDeltaY;
