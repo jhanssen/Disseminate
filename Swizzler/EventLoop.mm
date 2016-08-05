@@ -206,6 +206,8 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
         }
         break;
     }
+    if (sDelta.has)
+        sDelta.has = false;
     return event;
 }
 
