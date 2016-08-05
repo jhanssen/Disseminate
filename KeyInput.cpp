@@ -36,7 +36,8 @@ public:
                     emit keyPress(ke->nativeVirtualKey(), ke->nativeModifiers());
             }
             return true;
-        } return false;
+        }
+        return false;
     }
 
 signals:
@@ -91,11 +92,7 @@ KeyCode KeyInput::getKeyCode(QWidget* parent)
 {
     KeyCode code = { 0, 0 };
     KeyInput readKey(parent);
-    if (readKey.valid()) {
-        connect(&readKey, &KeyInput::keyAdded, [&code](int64_t k, uint64_t m) { code.first = k; code.second = m; });
-        readKey.exec();
-    } else {
-        QMessageBox::critical(parent, "Unable to capture key", "Unable to capture key, ensure that the app is allowed to control your computer");
-    }
+    connect(&readKey, &KeyInput::keyAdded, [&code](int64_t k, uint64_t m) { code.first = k; code.second = m; });
+    readKey.exec();
     return code;
 }

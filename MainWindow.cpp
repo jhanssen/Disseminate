@@ -158,12 +158,8 @@ void MainWindow::pushSettings()
 void MainWindow::addKey()
 {
     KeyInput readKey(this);
-    if (readKey.valid()) {
-        connect(&readKey, &KeyInput::keyAdded, this, &MainWindow::keyAdded);
-        readKey.exec();
-    } else {
-        QMessageBox::critical(this, "Unable to capture key", "Unable to capture key, ensure that the app is allowed to control your computer");
-    }
+    connect(&readKey, &KeyInput::keyAdded, this, &MainWindow::keyAdded);
+    readKey.exec();
 }
 
 void MainWindow::removeKey()

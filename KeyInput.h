@@ -36,8 +36,6 @@ public:
     explicit KeyInput(QWidget *parent = 0);
     ~KeyInput();
 
-    bool valid() const { return capturing; }
-
     static KeyCode getKeyCode(QWidget* parent);
 
 protected:
@@ -58,7 +56,6 @@ private:
     KeyFilter* filter;
     int64_t currentKey;
     uint64_t currentFlags;
-    bool capturing;
 };
 
 #endif // KEYINPUT_H
