@@ -14,12 +14,15 @@ class EventLoopEvent
 public:
     enum Flag { None, Retain };
     EventLoopEvent(NSEvent* event, Flag flag);
+    EventLoopEvent(NSEvent* event, Flag flag, double dx, double dy);
     ~EventLoopEvent();
 
     NSEvent* take() { NSEvent* e = evt; evt = 0; return e; }
 
     NSEvent* evt;
     Flag flg;
+    bool hasDelta;
+    double deltaX, deltaY;
 };
 
 class EventLoopTimer : public std::enable_shared_from_this<EventLoopTimer>

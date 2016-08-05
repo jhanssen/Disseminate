@@ -76,6 +76,12 @@ public:
     double pressure() { return internal->pressure; }
     void setPressure(double arg) { detach(); internal->pressure = arg; }
 
+    bool hasDelta() const { return internal->delta.get() != 0; }
+    double deltaX() { return internal->delta ? internal->delta->x() : 0.; };
+    void setDeltaX(double x) { if (internal->delta) internal->delta->mutate_x(x); else makeDelta(x, 0.); }
+    double deltaY() { return internal->delta ? internal->delta->y() : 0.; };
+    void setDeltaY(double y) { if (internal->delta) internal->delta->mutate_y(y); else makeDelta(0., y); }
+
     std::string fromUuid() { return internal->fromUuid; }
 
     MouseEvent clone() { return MouseEvent(*this); }
@@ -99,6 +105,15 @@ protected:
         if (other->location) {
             internal->location = std::make_unique<Disseminate::Mouse::Location>(other->location->x(), other->location->y());
         }
+        if (other->delta) {
+            internal->delta = std::make_unique<Disseminate::Mouse::Location>(other->delta->x(), other->delta->y());
+        }
+    }
+
+private:
+    void makeDelta(double x, double y)
+    {
+        internal->delta = std::make_unique<Disseminate::Mouse::Location>(x, y);
     }
 };
 
@@ -125,14 +140,17 @@ MouseEvent::MouseEvent(NSEvent* event)
     case NSMouseMoved:
         internal->type = Disseminate::Mouse::Type_Move;
         internal->button = Disseminate::Mouse::Button_None;
+        internal->delta = std::make_unique<Disseminate::Mouse::Location>([event deltaX], [event deltaY]);
         break;
     case NSLeftMouseDragged:
         internal->type = Disseminate::Mouse::Type_Move;
         internal->button = Disseminate::Mouse::Button_Left;
+        internal->delta = std::make_unique<Disseminate::Mouse::Location>([event deltaX], [event deltaY]);
         break;
     case NSRightMouseDragged:
         internal->type = Disseminate::Mouse::Type_Move;
         internal->button = Disseminate::Mouse::Button_Right;
+        internal->delta = std::make_unique<Disseminate::Mouse::Location>([event deltaX], [event deltaY]);
         break;
     default:
         abort();
@@ -256,7 +274,7 @@ class ScriptEngineData
 {
 public:
     ScriptEngineData(const std::string& id)
-        : uuid(id), nextTimer(0)
+        : uuid(id), nextTimer(0), realWindow(0)
     {
     }
 
@@ -292,6 +310,8 @@ public:
     std::map<uint32_t, std::shared_ptr<EventLoopTimer> > timers;
 
     std::unordered_map<std::string, int32_t> windowNumbers;
+
+    int32_t realWindow;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -325,6 +345,10 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_clickCount", &MouseEvent::setClickCount,
         "pressure", &MouseEvent::pressure,
         "set_pressure", &MouseEvent::setPressure,
+        "deltax", &MouseEvent::deltaX,
+        "set_deltaX", &MouseEvent::setDeltaX,
+        "deltay", &MouseEvent::deltaY,
+        "set_deltaY", &MouseEvent::setDeltaY,
         "fromUuid", &MouseEvent::fromUuid,
         "clone", &MouseEvent::clone);
     (*state)["KeyEvent"].SetClass<KeyEvent, int, int, double, double>(
@@ -513,8 +537,11 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             location.y = event.y();
 
             NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:event.windowNumber() context:0 eventNumber:0 clickCount:count pressure:pressure];
-            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
+                            windowNumber:data->realWindow context:0 eventNumber:0 clickCount:count pressure:pressure];
+            if (event.hasDelta())
+                EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain, event.deltaX(), event.deltaY()));
+            else
+                EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
     }
 
@@ -578,7 +605,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
 
             auto wrapper = fromStdString(event.text());
             NSEvent* evt = [NSEvent keyEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:event.windowNumber() context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
+                            windowNumber:data->realWindow context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
                             isARepeat:event.repeat() keyCode: event.keyCode()];
             EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
@@ -898,6 +925,9 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged: {
+        auto wn = [nsevent windowNumber];
+        if (data->realWindow != wn)
+            data->realWindow = wn;
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
@@ -912,6 +942,9 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         break; }
     case NSKeyDown:
     case NSKeyUp: {
+        auto wn = [nsevent windowNumber];
+        if (data->realWindow != wn)
+            data->realWindow = wn;
         auto on = data->keyEventFunctions.begin();
         const auto end = data->keyEventFunctions.end();
         while (on != end) {

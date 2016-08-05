@@ -13,6 +13,7 @@ table Event
     type: Type;
     button: Button;
     location: Location;
+    delta: Location;
     windowNumber: int;
     modifiers: ulong = 0;
     timestamp: double = 0;

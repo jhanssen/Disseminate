@@ -102,7 +102,14 @@ static uintptr_t ProcessPending2 = reinterpret_cast<uintptr_t>(&ProcessPending2)
 EventLoop* EventLoop::sEventLoop = 0;
 
 EventLoopEvent::EventLoopEvent(NSEvent* event, Flag flag)
-    : evt(event), flg(flag)
+    : evt(event), flg(flag), hasDelta(false), deltaX(0.), deltaY(0.)
+{
+    if (flg == Retain)
+        [evt retain];
+}
+
+EventLoopEvent::EventLoopEvent(NSEvent* event, Flag flag, double dx, double dy)
+    : evt(event), flg(flag), hasDelta(true), deltaX(dx), deltaY(dy)
 {
     if (flg == Retain)
         [evt retain];
@@ -125,6 +132,11 @@ EventLoop* EventLoop::eventLoop()
     sEventLoop = new EventLoop;
     return sEventLoop;
 }
+
+struct {
+    bool has;
+    float dx, dy;
+} static sDelta = { false, 0., 0, };
 
 typedef NSEvent* (*NextEventSignature)(id self, SEL _cmd, NSUInteger mask, NSDate* expiration, NSString* mode, BOOL flag);
 static IMP sNextEventMatchingMaskImp = NULL;
@@ -163,7 +175,15 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                     const auto end = sPendingEvents.end();
                     NSApplication* app = [NSApplication sharedApplication];
                     while (it != end) {
-                        event = (*it)->take();
+                        const auto& fake = *it;
+                        event = fake->take();
+                        if (fake->hasDelta) {
+                            sDelta.has = true;
+                            sDelta.dx = fake->deltaX;
+                            sDelta.dy = fake->deltaY;
+                        } else {
+                            sDelta.has = false;
+                        }
                         NSPoint loc = [event locationInWindow];
                         printf("sending fake event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);
 
@@ -200,6 +220,26 @@ static void patchedTerminate(id self, SEL _cmd, id sender)
     sig(self, _cmd, sender);
 }
 
+typedef CGFloat (*FloatSignature)(id self, SEL _cmd);
+static IMP sDeltaX = NULL;
+static CGFloat patchedDeltaX(id self, SEL _cmd)
+{
+    printf("delta x\n");
+    if (sDelta.has)
+        return sDelta.dx;
+    FloatSignature sig = (FloatSignature)sDeltaX;
+    return sig(self, _cmd);
+}
+static IMP sDeltaY = NULL;
+static CGFloat patchedDeltaY(id self, SEL _cmd)
+{
+    printf("delta y\n");
+    if (sDelta.has)
+        return sDelta.dy;
+    FloatSignature sig = (FloatSignature)sDeltaY;
+    return sig(self, _cmd);
+}
+
 void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
 {
     sPendingEvents.push_back(evt);
@@ -234,6 +274,14 @@ void EventLoop::swizzle()
         Method original = class_getInstanceMethod([NSApplication class],
                                                   @selector(terminate:));
         sTerminateImp = method_setImplementation(original, (IMP)patchedTerminate);
+    }
+    {
+        Method original = class_getInstanceMethod([NSEvent class], @selector(deltaX));
+        sDeltaX = method_setImplementation(original, (IMP)patchedDeltaX);
+    }
+    {
+        Method original = class_getInstanceMethod([NSEvent class], @selector(deltaY));
+        sDeltaY = method_setImplementation(original, (IMP)patchedDeltaY);
     }
 }
 
