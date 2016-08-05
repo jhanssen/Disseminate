@@ -26,6 +26,8 @@ namespace Ui {
 class KeyInput;
 }
 
+class KeyFilter;
+
 class KeyInput : public QDialog
 {
     Q_OBJECT
@@ -53,6 +55,7 @@ private:
 
 private:
     Ui::KeyInput *ui;
+    KeyFilter* filter;
     int64_t currentKey;
     uint64_t currentFlags;
     bool capturing;

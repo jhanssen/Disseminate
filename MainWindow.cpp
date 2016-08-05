@@ -57,13 +57,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->pushSettings, &QPushButton::clicked, this, &MainWindow::pushSettings);
 
-    QTimer::singleShot(50, [this]() {
-            if (broadcast::checkAllowsAccessibility() == broadcast::Unknown) {
-                QMessageBox::warning(this, "Accessibility permissions required",
-                                     "Disemminate requires accessibility permissions, you might need to enable this in system preferences");
-            }
-        });
-
     messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
             const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
             printf("got message %d -> %s\n", id, name.c_str());
@@ -85,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     //broadcast::stop();
-    broadcast::cleanup();
+    //broadcast::cleanup();
     delete ui;
 }
 

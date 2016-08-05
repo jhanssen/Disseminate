@@ -21,6 +21,29 @@
 #include "Utils.h"
 #include "ui_KeyInput.h"
 #include <QMessageBox>
+#include <QKeyEvent>
+
+class KeyFilter : public QObject
+{
+    Q_OBJECT
+public:
+    bool eventFilter(QObject *object, QEvent *event)
+    {
+        if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
+            if (event->type() == QEvent::KeyPress) {
+                QKeyEvent* ke = static_cast<QKeyEvent*>(event);
+                if (ke->nativeVirtualKey() || ke->nativeModifiers())
+                    emit keyPress(ke->nativeVirtualKey(), ke->nativeModifiers());
+            }
+            return true;
+        } return false;
+    }
+
+signals:
+    void keyPress(quint32 key, quint32 mod);
+};
+
+#include "KeyInput.moc"
 
 KeyInput::KeyInput(QWidget *parent) :
     QDialog(parent),
@@ -29,17 +52,20 @@ KeyInput::KeyInput(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(this, &KeyInput::accepted, this, &KeyInput::emitKeyAdded);
-    capturing = broadcast::startReadKey([this](int64_t key, uint64_t flags) {
+
+    filter = new KeyFilter;
+    connect(filter, &KeyFilter::keyPress, [this](quint32 key, quint32 mod) {
             currentKey = key;
-            currentFlags = flags;
+            currentFlags = mod;
             updateKey();
         });
+    qApp->installEventFilter(filter);
 }
 
 KeyInput::~KeyInput()
 {
-    broadcast::stopReadKey();
     delete ui;
+    delete filter;
 }
 
 void KeyInput::emitKeyAdded()

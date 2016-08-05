@@ -38,73 +38,6 @@ static void log(const char* format, ...)
     fwrite("\n", 1, 2, logfile);
 }
 
-struct ReadKey
-{
-    CFMachPortRef tap;
-    CFRunLoopSourceRef source;
-    std::function<void(int64_t, uint64_t)> func;
-};
-
-static ReadKey readKey = { nullptr, nullptr, nullptr };
-
-static ProcessSerialNumber activePSN()
-{
-    NSWorkspace* workspace            = [NSWorkspace sharedWorkspace];
-    NSDictionary* currentAppInfo      = [workspace activeApplication];
-
-    //Get the PSN of the current application.
-    ProcessSerialNumber psn;
-    psn.lowLongOfPSN = [[currentAppInfo objectForKey:@"NSApplicationProcessSerialNumberLow"] longValue];
-    psn.highLongOfPSN = [[currentAppInfo objectForKey:@"NSApplicationProcessSerialNumberHigh"] longValue];
-    return psn;
-}
-
-CGEventRef readkeyCGEventCallback(CGEventTapProxy /*proxy*/,
-                                  CGEventType type,
-                                  CGEventRef event,
-                                  void *refcon)
-{
-    if(type == NX_KEYDOWN) {
-        ReadKey* readKey = static_cast<ReadKey*>(refcon);
-        // CG_EXTERN int64_t CGEventGetIntegerValueField(CGEventRef __nullable event,
-        // CGEventField field)
-        const int64_t virt = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-        const CGEventFlags flags = CGEventGetFlags(event);
-        readKey->func(virt, flags);
-    }
-
-    return event;
-}
-
-bool broadcast::startReadKey(const std::function<void(int64_t, uint64_t)>& func)
-{
-    stopReadKey();
-
-    CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
-    CGEventMask interestedEvents = CGEventMaskBit(kCGEventKeyDown);
-    ProcessSerialNumber psn = activePSN();
-    readKey.tap = CGEventTapCreateForPSN(&psn, kCGHeadInsertEventTap,
-                                         kCGEventTapOptionDefault, interestedEvents, readkeyCGEventCallback, &readKey);
-    if (!readKey.tap)
-        return false;
-    readKey.source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, readKey.tap, 0);
-    readKey.func = func;
-    CFRunLoopAddSource(runloop, readKey.source, kCFRunLoopCommonModes);
-    return true;
-}
-
-void broadcast::stopReadKey()
-{
-    if (readKey.source) {
-        CFRunLoopRef runloop = (CFRunLoopRef)CFRunLoopGetCurrent();
-        CFRunLoopRemoveSource(runloop, readKey.source, kCFRunLoopCommonModes);
-        CFRelease(readKey.source);
-        CFMachPortInvalidate(readKey.tap);
-        CFRelease(readKey.tap);
-        readKey = { nullptr, nullptr, nullptr };
-    }
-}
-
 std::string broadcast::keyToString(int64_t key)
 {
     switch (key) {
@@ -382,25 +315,4 @@ std::string broadcast::maskToString(uint64_t mask)
     //     m += "NonCoalesced";
     // }
     return m;
-}
-
-void broadcast::cleanup()
-{
-    if (logfile) {
-        fclose(logfile);
-        logfile = 0;
-    }
-}
-
-broadcast::Accessible broadcast::checkAllowsAccessibility()
-{
-    if (AXIsProcessTrustedWithOptions != NULL) {
-        // 10.9 and later
-        NSDictionary *options = @{(id)kAXTrustedCheckOptionPrompt : @YES};
-        if (AXIsProcessTrustedWithOptions((CFDictionaryRef)options))
-            return Allowed;
-        else
-            return Denied;
-    }
-    return Unknown;
 }

@@ -24,16 +24,8 @@
 #include <string>
 
 namespace broadcast {
-bool startReadKey(const std::function<void(int64_t, uint64_t)>& func);
-void stopReadKey();
-
 std::string keyToString(int64_t key);
 std::string maskToString(uint64_t mask);
-
-void cleanup();
-
-enum Accessible { Allowed, Denied, Unknown };
-Accessible checkAllowsAccessibility();
 };
 
 #endif
