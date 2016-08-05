@@ -9,6 +9,7 @@
 #include <FlatbufferTypes.h>
 #include <MouseEvent_generated.h>
 #include <Settings_generated.h>
+#include <RemoteAdd_generated.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
 
@@ -136,10 +137,11 @@ static Context context;
                                 context.lua->evaluate(toString(data));
                                 loop->wakeup();
                                 break;
-                            case Disseminate::FlatbufferTypes::RemoteAdd:
-                                context.lua->registerClient(ScriptEngine::Remote, toString(data));
+                            case Disseminate::FlatbufferTypes::RemoteAdd: {
+                                auto event = Disseminate::RemoteAdd::GetEvent(&data[0])->UnPack();
+                                context.lua->registerClient(ScriptEngine::Remote, event);
                                 loop->wakeup();
-                                break;
+                                break; }
                             case Disseminate::FlatbufferTypes::RemoteRemove:
                                 context.lua->unregisterClient(ScriptEngine::Remote, toString(data));
                                 loop->wakeup();

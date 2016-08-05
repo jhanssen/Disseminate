@@ -26,6 +26,7 @@
 #include <memory>
 #include <FlatbufferTypes.h>
 #include <Settings_generated.h>
+#include <RemoteAdd_generated.h>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
@@ -70,7 +71,7 @@ MainWindow::MainWindow(QWidget *parent) :
                     remotePorts.erase(id);
                     reloadClients();
                 });
-            remotePorts[id] = std::make_pair(name, remote);
+            remotePorts[id] = { name, 0, remote };
             reloadClients();
         });
 }
@@ -132,23 +133,36 @@ void MainWindow::pushSettings()
         global.activeExclusions.push_back({ ex.first, ex.second });
     }
 
-    flatbuffers::FlatBufferBuilder builder;
-    auto buffer = Disseminate::Settings::CreateGlobal(builder, &global);
-    builder.Finish(buffer);
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        auto buffer = Disseminate::Settings::CreateGlobal(builder, &global);
+        builder.Finish(buffer);
 
-    std::vector<uint8_t> message(builder.GetBufferPointer(),
-                                 builder.GetBufferPointer() + builder.GetSize());
-    for (auto r : remotePorts) {
-        r.second.second->send(Disseminate::FlatbufferTypes::Settings, message);
+        std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                     builder.GetBufferPointer() + builder.GetSize());
+        for (auto r : remotePorts) {
+            r.second.port->send(Disseminate::FlatbufferTypes::Settings, message);
+        }
     }
 
+    Disseminate::RemoteAdd::EventT addEvent;
     // push over all remotes
     for (auto r : remotePorts) {
-        r.second.second->send(Disseminate::FlatbufferTypes::RemoteClear);
-        const auto& self = r.second.first;
+        r.second.port->send(Disseminate::FlatbufferTypes::RemoteClear);
+        const auto& self = r.second.uuid;
         for (auto o : remotePorts) {
-            if (o.second.first != self) {
-                r.second.second->send(Disseminate::FlatbufferTypes::RemoteAdd, o.second.first);
+            if (o.second.uuid != self) {
+                addEvent.uuid = o.second.uuid;
+                addEvent.windowNumber = o.second.windowId;
+                assert(addEvent.windowNumber);
+
+                flatbuffers::FlatBufferBuilder builder;
+                auto buffer = Disseminate::RemoteAdd::CreateEvent(builder, &addEvent);
+                builder.Finish(buffer);
+
+                std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                             builder.GetBufferPointer() + builder.GetSize());
+                r.second.port->send(Disseminate::FlatbufferTypes::RemoteAdd, message);
             }
         }
     }
@@ -423,8 +437,9 @@ void MainWindow::reloadClients()
         stopBroadcast();
 
     ui->clientList->clear();
-    for (const auto& remote : remotePorts) {
+    for (auto& remote : remotePorts) {
         const auto& info = getInformation(remote.first);
+        remote.second.windowId = info.windowId;
         if (!info.title.isEmpty()) {
             QString text = info.title + " (" + QString::number(info.windowId) + ")";
             ui->clientList->addItem(new ClientItem(text, info.title, remote.first, info.windowId, info.icon));

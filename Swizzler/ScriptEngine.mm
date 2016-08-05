@@ -2,6 +2,7 @@
 #include "MessagePort.h"
 #include "FlatbufferTypes.h"
 #include <map>
+#include <unordered_map>
 #include <memory>
 #include <MouseEvent_generated.h>
 #include "CocoaUtils.h"
@@ -265,7 +266,7 @@ public:
 
     std::vector<std::pair<ScriptEngine::ClientType, std::string> > clients;
 
-    std::map<std::string, std::shared_ptr<MessagePortRemote> > ports;
+    std::unordered_map<std::string, std::shared_ptr<MessagePortRemote> > ports;
 
     std::string uuid;
 
@@ -289,6 +290,8 @@ public:
 
     uint32_t nextTimer;
     std::map<uint32_t, std::shared_ptr<EventLoopTimer> > timers;
+
+    std::unordered_map<std::string, int32_t> windowNumbers;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -424,17 +427,19 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             data->mouseEventFunctions.push_back(fun);
         };
         mouseEvent["sendToAll"] = [this](MouseEvent event) {
-            flatbuffers::FlatBufferBuilder builder;
-            auto flat = event.flat();
-            flat->fromUuid = data->uuid;
-            auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
-            builder.Finish(buffer);
-            std::vector<uint8_t> message(builder.GetBufferPointer(),
-                                         builder.GetBufferPointer() + builder.GetSize());
-
             auto port = data->ports.cbegin();
             const auto end = data->ports.cend();
             while (port != end) {
+                flatbuffers::FlatBufferBuilder builder;
+                auto flat = event.flat();
+                flat->fromUuid = data->uuid;
+                // printf("sending to all %s -> %d\n", port->first.c_str(), data->windowNumbers[port->first]);
+                flat->windowNumber = data->windowNumbers[port->first];
+                auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
+                builder.Finish(buffer);
+                std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                             builder.GetBufferPointer() + builder.GetSize());
+
                 port->second->send(Disseminate::FlatbufferTypes::MouseEvent, message);
                 ++port;
             }
@@ -450,6 +455,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
+            flat->windowNumber = data->windowNumbers[data->uuid];
             auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
@@ -585,7 +591,8 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         printf("logInt -- %d\n", i);
     };
 #if 1
-    (*state)("function acceptKeys(type, ke)\n"
+    (*state)("capturingMouse = 0\n"
+             "function acceptKeys(type, ke)\n"
              "  logInt(1)\n"
              "  if type == enums.Remote then\n"
              "    keyEvent.inject(ke)\n"
@@ -596,16 +603,50 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  local mods = ke:modifiers()\n"
              "  logInt(3)\n"
              "  if keys and keys.global then\n"
+             "    logInt(300)\n"
+             "    if keys.global.mousebind then\n"
+             "      logInt(310)\n"
+             "      logInt(code)\n"
+             "      logInt(keys.global.mousebind.keycode)\n"
+             "      logString(\"---\")\n"
+             "      logInt(mods)\n"
+             "      logInt(keys.global.mousebind.modifiers)\n"
+             "      if code == keys.global.mousebind.keycode and mods == keys.global.mousebind.modifiers then\n"
+             "        if ke:type() == enums.KeyDown then\n"
+             "          logInt(320)\n"
+             "          logInt(capturingMouse)\n"
+             "          if capturingMouse == 0 then\n"
+             "            capturingMouse = 1\n"
+             "          else\n"
+             "            capturingMouse = 0\n"
+             "          end\n"
+             "        end\n"
+             "        return false\n"
+             "      end\n"
+             "    end\n"
+             "    local sendToAll = true\n"
              "    if keys.global.keys then\n"
              "      for k,v in ipairs(keys.global.keys) do\n"
              "        logString(\"testing\")\n"
              "        logInt(v.modifiers)\n"
              "        logInt(mods)\n"
-             "        if v.keycode == code and v.modifiers == mods then\n"
-             "          logInt(30)\n"
-             "          keyEvent.sendToAll(ke)\n"
+             "        if keys.global.type == enums.WhiteList then\n"
+             "          if v.keycode == code and v.modifiers == mods then\n"
+             "            logInt(30)\n"
+             "            keyEvent.sendToAll(ke)\n"
+             "            break\n"
+             "          end\n"
+             "        else\n"
+             "          if v.keycode == code and v.modifiers == mods then\n"
+             "            sendToAll = false\n"
+             "            break\n"
+             "          end\n"
              "        end\n"
              "      end\n"
+             "    end\n"
+             "    if keys.global.type == enums.BlackList and sendToAll then\n"
+             "      logInt(35)\n"
+             "      keyEvent.sendToAll(ke)\n"
              "    end\n"
              "    logInt(4)\n"
              "    if keys.global.exclusions then\n"
@@ -620,6 +661,23 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  logInt(5)\n"
              "  return true\n"
              "end\n"
+             "function acceptMouse(type, me)\n"
+             "  logInt(1000)\n"
+             "  if type == enums.Remote then\n"
+             "    logInt(1030)\n"
+             "    mouseEvent.inject(me)\n"
+             "    return true\n"
+             "  end\n"
+             "  logInt(capturingMouse)\n"
+             "  if capturingMouse == 0 then\n"
+             "    logInt(1010)\n"
+             "    return true\n"
+             "  end\n"
+             "  logInt(1040)\n"
+             "  mouseEvent.sendToAll(me)\n"
+             "  return true\n"
+             "end\n"
+             "mouseEvent.on(acceptMouse)\n"
              "keyEvent.on(acceptKeys)\n");
 #endif
 #if 0
@@ -712,6 +770,12 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
 
 ScriptEngine::~ScriptEngine()
 {
+}
+
+void ScriptEngine::registerClient(ClientType type, std::unique_ptr<Disseminate::RemoteAdd::EventT>& eventData)
+{
+    data->windowNumbers[eventData->uuid] = eventData->windowNumber;
+    registerClient(type, eventData->uuid);
 }
 
 void ScriptEngine::registerClient(ClientType type, const std::string& uuid)
@@ -839,7 +903,7 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         while (on != end) {
 #warning think I can move this out of the loop now that MouseEvent are copy-on-write
             MouseEvent localEvent(nsevent);
-            printf("processing local-- %p\n", &localEvent);
+            //printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
                 return false;
             }
@@ -853,7 +917,7 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         while (on != end) {
 #warning think I can move this out of the loop now that KeyEvent are copy-on-write
             KeyEvent localEvent(nsevent);
-            printf("processing local-- %p\n", &localEvent);
+            //printf("processing local-- %p\n", &localEvent);
             if (!(*on)(Local, localEvent)) {
                 return false;
             }

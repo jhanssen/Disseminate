@@ -1,6 +1,7 @@
 .DS_Store
 .qmake*
 *.o
+*.moc
 Makefile
 *.json
 disseminate.app/*

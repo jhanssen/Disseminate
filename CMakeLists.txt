@@ -85,6 +85,7 @@ set(FLATFILES
     buffers/MouseEvent.fbs
     buffers/KeyEvent.fbs
     buffers/Settings.fbs
+    buffers/RemoteAdd.fbs
     )
 
 buffers_to_cpp(flatbufferfiles buffers "${FLATFILES}")

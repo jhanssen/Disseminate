@@ -6,6 +6,7 @@
 #include <MouseEvent_generated.h>
 #include <KeyEvent_generated.h>
 #include <Settings_generated.h>
+#include <RemoteAdd_generated.h>
 #include <AppKit/NSEvent.h>
 
 class ScriptEngineData;
@@ -27,6 +28,7 @@ public:
     bool processLocalEvent(const std::shared_ptr<EventLoopEvent>& event);
 
     enum ClientType { Local, Remote };
+    void registerClient(ClientType type, std::unique_ptr<Disseminate::RemoteAdd::EventT>& eventData);
     void registerClient(ClientType type, const std::string& uuid);
     void unregisterClient(ClientType type, const std::string& uuid);
     void clearClients(ClientType type);
