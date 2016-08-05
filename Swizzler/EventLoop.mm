@@ -313,6 +313,40 @@ static CGFloat patchedDeltaY(id self, SEL _cmd)
     return sig(self, _cmd);
 }
 
+typedef NSUInteger (*PressedMouseButtonsSignature)(id self, SEL _cmd);
+static IMP sPressedMouseButtons = NULL;
+static NSUInteger patchedPressedMouseButtons(id self, SEL _cmd)
+{
+    printf("pressed mouse buttons\n");
+    PressedMouseButtonsSignature sig = (PressedMouseButtonsSignature)sPressedMouseButtons;
+    return sig(self, _cmd);
+}
+
+typedef NSInteger (*ButtonNumberSignature)(id self, SEL _cmd);
+static IMP sButtonNumber = NULL;
+static NSInteger patchedButtonNumber(id self, SEL _cmd)
+{
+    printf("button number\n");
+    NSEvent* ev = (NSEvent*)self;
+    switch ([ev type]) {
+    case NSLeftMouseDown:
+    case NSLeftMouseUp:
+    case NSLeftMouseDragged:
+        return 0;
+    case NSRightMouseDown:
+    case NSRightMouseUp:
+    case NSRightMouseDragged:
+        return 1;
+    default:
+        break;
+    };
+    ButtonNumberSignature sig = (ButtonNumberSignature)sButtonNumber;
+    return sig(self, _cmd);
+    // NSInteger ret = sig(self, _cmd);
+    // printf(" - for %lu -> %ld\n", [ev type], ret);
+    // return ret;
+}
+
 void EventLoop::postEvent(const std::shared_ptr<EventLoopEvent>& evt)
 {
     sPendingEvents.push_back(evt);
@@ -355,6 +389,14 @@ void EventLoop::swizzle()
     {
         Method original = class_getInstanceMethod([NSEvent class], @selector(deltaY));
         sDeltaY = method_setImplementation(original, (IMP)patchedDeltaY);
+    }
+    {
+        Method original = class_getInstanceMethod([NSEvent class], @selector(buttonNumber));
+        sButtonNumber = method_setImplementation(original, (IMP)patchedButtonNumber);
+    }
+    {
+        Method original = class_getClassMethod([NSEvent class], @selector(pressedMouseButtons));
+        sPressedMouseButtons = method_setImplementation(original, (IMP)patchedPressedMouseButtons);
     }
 }
 
