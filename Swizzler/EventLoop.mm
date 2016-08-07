@@ -213,7 +213,11 @@ EventLoop* EventLoop::eventLoop()
     return sEventLoop;
 }
 
-struct DeltaData {
+struct DeltaData
+{
+    DeltaData() : has(false) { }
+    DeltaData(bool h, double x, double y) : has(h), dx(x), dy(y) { }
+
     bool has;
     double dx, dy;
 };
@@ -429,7 +433,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                     while (it != end) {
                         const auto& fake = *it;
                         if (fake->mevt.isValid() && fake->mevt.hasDelta()) {
-                            sDelta.set({ true, fake->mevt.deltaX(), fake->mevt.deltaY() });
+                            sDelta.set(DeltaData(true, fake->mevt.deltaX(), fake->mevt.deltaY()));
                         } else {
                             sDelta->has = false;
                         }
@@ -460,8 +464,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged:
-        if (sDelta->has)
-            sDelta->has = false;
+        sDelta->has = false;
         break;
     default:
         break;
