@@ -153,8 +153,6 @@ void MainWindow::pushSettings()
         for (auto o : remotePorts) {
             if (o.second.uuid != self) {
                 addEvent.uuid = o.second.uuid;
-                addEvent.windowNumber = o.second.windowId;
-                assert(addEvent.windowNumber);
 
                 flatbuffers::FlatBufferBuilder builder;
                 auto buffer = Disseminate::RemoteAdd::CreateEvent(builder, &addEvent);

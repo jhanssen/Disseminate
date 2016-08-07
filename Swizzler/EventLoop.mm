@@ -140,8 +140,7 @@ struct {
 
 static inline void sendEvent(NSEvent* event)
 {
-    auto wno = [event windowNumber];
-    NSWindow* win = [[NSApplication sharedApplication] windowWithWindowNumber:wno];
+    NSWindow* win = [[NSApplication sharedApplication] keyWindow];
     if (!win) {
         printf("out 1\n");
         return;

@@ -3,7 +3,6 @@ namespace Disseminate.RemoteAdd;
 table Event
 {
     uuid: string;
-    windowNumber: int;
 }
 
 root_type Event;

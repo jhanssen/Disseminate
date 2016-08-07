@@ -36,7 +36,6 @@ public:
         internal = std::make_shared<Disseminate::Mouse::EventT>();
         internal->type = static_cast<Disseminate::Mouse::Type>(_type);
         internal->button = static_cast<Disseminate::Mouse::Button>(_button);
-        internal->windowNumber = 0;
         internal->modifiers = 0;
         internal->timestamp = timeIntervalSinceSystemStartup();
         internal->clickCount = 0;
@@ -60,9 +59,6 @@ public:
 
     int32_t button() { return internal->button; }
     void setButton(int32_t arg) { detach(); internal->button = static_cast<Disseminate::Mouse::Button>(arg); };
-
-    int32_t windowNumber() { return internal->windowNumber; }
-    void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
 
     uint16_t modifiers() { return internal->modifiers; }
     void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
@@ -95,7 +91,6 @@ protected:
         internal = std::make_shared<Disseminate::Mouse::EventT>();
         internal->type = other->type;
         internal->button = other->button;
-        internal->windowNumber = other->windowNumber;
         internal->modifiers = other->modifiers;
         internal->timestamp = other->timestamp;
         internal->clickCount = other->clickCount;
@@ -164,7 +159,6 @@ MouseEvent::MouseEvent(NSEvent* event)
     internal->clickCount = [event clickCount];
     internal->pressure = [event pressure];
     internal->timestamp = [event timestamp];
-    internal->windowNumber = [event windowNumber];
 }
 
 class KeyEvent : public Detachable<Disseminate::Key::EventT>
@@ -175,7 +169,6 @@ public:
         internal = std::make_shared<Disseminate::Key::EventT>();
         internal->type = static_cast<Disseminate::Key::Type>(_type);
         internal->keyCode = _code;
-        internal->windowNumber = 0;
         internal->modifiers = 0;
         internal->timestamp = timeIntervalSinceSystemStartup();
         internal->repeat = false;
@@ -198,9 +191,6 @@ public:
 
     int32_t keyCode() { return internal->keyCode; }
     void setKeyCode(int32_t arg) { detach(); internal->keyCode = arg; }
-
-    int32_t windowNumber() { return internal->windowNumber; }
-    void setWindowNumber(int32_t arg) { detach(); internal->windowNumber = arg; };
 
     uint32_t modifiers() { return internal->modifiers; }
     void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
@@ -227,7 +217,6 @@ protected:
         internal = std::make_shared<Disseminate::Key::EventT>();
         internal->type = other->type;
         internal->keyCode = other->keyCode;
-        internal->windowNumber = other->windowNumber;
         internal->modifiers = other->modifiers;
         internal->timestamp = other->timestamp;
         internal->text = other->text;
@@ -262,7 +251,6 @@ KeyEvent::KeyEvent(NSEvent* event)
     internal->keyCode = [event keyCode];
     internal->modifiers = [event modifierFlags];
     internal->timestamp = [event timestamp];
-    internal->windowNumber = [event windowNumber];
     internal->repeat = [event isARepeat];
 }
 
@@ -274,7 +262,7 @@ class ScriptEngineData
 {
 public:
     ScriptEngineData(const std::string& id)
-        : uuid(id), nextTimer(0), realWindow(0)
+        : uuid(id), nextTimer(0)
     {
     }
 
@@ -308,10 +296,6 @@ public:
 
     uint32_t nextTimer;
     std::map<uint32_t, std::shared_ptr<EventLoopTimer> > timers;
-
-    std::unordered_map<std::string, int32_t> windowNumbers;
-
-    int32_t realWindow;
 };
 
 static inline void setEnum(sel::State& state, const std::string& name, int c)
@@ -339,8 +323,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_y", &MouseEvent::setY,
         "modifiers", &MouseEvent::modifiers,
         "set_modifiers", &MouseEvent::setModifiers,
-        "windownumber", &MouseEvent::windowNumber,
-        "set_windownumber", &MouseEvent::setWindowNumber,
         "clickCount", &MouseEvent::clickCount,
         "set_clickCount", &MouseEvent::setClickCount,
         "pressure", &MouseEvent::pressure,
@@ -362,8 +344,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
         "set_y", &KeyEvent::setY,
         "modifiers", &KeyEvent::modifiers,
         "set_modifiers", &KeyEvent::setModifiers,
-        "windownumber", &KeyEvent::windowNumber,
-        "set_windownumber", &KeyEvent::setWindowNumber,
         "text", &KeyEvent::text,
         "set_text", &KeyEvent::setText,
         "repeat", &KeyEvent::repeat,
@@ -458,7 +438,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
                 auto flat = event.flat();
                 flat->fromUuid = data->uuid;
                 // printf("sending to all %s -> %d\n", port->first.c_str(), data->windowNumbers[port->first]);
-                flat->windowNumber = data->windowNumbers[port->first];
                 auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
                 builder.Finish(buffer);
                 std::vector<uint8_t> message(builder.GetBufferPointer(),
@@ -479,7 +458,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
-            flat->windowNumber = data->windowNumbers[data->uuid];
             auto buffer = Disseminate::Mouse::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
@@ -537,7 +515,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             location.y = event.y();
 
             NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:data->realWindow context:0 eventNumber:0 clickCount:count pressure:pressure];
+                            windowNumber:0 context:0 eventNumber:0 clickCount:count pressure:pressure];
             if (event.hasDelta())
                 EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain, event.deltaX(), event.deltaY()));
             else
@@ -558,7 +536,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             while (port != end) {
                 auto flat = event.flat();
                 flat->fromUuid = data->uuid;
-                flat->windowNumber = data->windowNumbers[port->first];
                 auto buffer = Disseminate::Key::CreateEvent(builder, flat);
                 builder.Finish(buffer);
                 std::vector<uint8_t> message(builder.GetBufferPointer(),
@@ -579,7 +556,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             flatbuffers::FlatBufferBuilder builder;
             auto flat = event.flat();
             flat->fromUuid = data->uuid;
-            flat->windowNumber = data->windowNumbers[to];
             auto buffer = Disseminate::Key::CreateEvent(builder, flat);
             builder.Finish(buffer);
             std::vector<uint8_t> message(builder.GetBufferPointer(),
@@ -608,7 +584,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
 
             auto wrapper = fromStdString(event.text());
             NSEvent* evt = [NSEvent keyEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:data->realWindow context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
+                            windowNumber:0 context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
                             isARepeat:event.repeat() keyCode: event.keyCode()];
             EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
         };
@@ -687,20 +663,16 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
 #endif
 #if 0
     (*state)("local foobar\n"
-             "local wnum = 0\n"
              "function acceptMouseEvent(type, me)\n"
              "  if me:x() > 380 then\n"
              "    logInt(776)\n"
              "    logInt(me:type())\n"
              "    if me:type() == enums.MouseRelease then\n"
              "      local move = MouseEvent.new(enums.MouseMove, enums.MouseButtonNone, 502.386719, 155.292969)\n"
-             "      move:set_windownumber(me:windownumber())\n"
              "      mouseEvent.inject(move)\n"
              "      local press = MouseEvent.new(enums.MousePress, enums.MouseButtonLeft, 502.386719, 155.292969)\n"
-             "      press:set_windownumber(me:windownumber())\n"
              "      mouseEvent.inject(press)\n"
              "      local release = MouseEvent.new(enums.MouseRelease, enums.MouseButtonLeft, 502.386719, 155.292969)\n"
-             "      release:set_windownumber(me:windownumber())\n"
              "      mouseEvent.inject(release)\n"
              "      logInt(777)\n"
              "    end\n"
@@ -736,7 +708,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "  logInt(ke:keycode())\n"
              "  if blockedKeys < 2 then\n"
              "    blockedKeys = blockedKeys + 1\n"
-             "    wnum = ke:windownumber()\n"
              "    return false\n"
              "  end\n"
              "  return true\n"
@@ -756,7 +727,6 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
              "    logString(\"stopping\")\n"
              "    timers.stop(timeoutId)\n"
              "    local keyPress = KeyEvent.new(enums.KeyUp, 0, 0, 0)\n"
-             "    keyPress:set_windownumber(wnum)\n"
              "    keyPress:set_text(\"a\")\n"
              "    keyEvent.inject(keyPress)\n"
              "  end\n"
@@ -779,7 +749,6 @@ ScriptEngine::~ScriptEngine()
 
 void ScriptEngine::registerClient(ClientType type, std::unique_ptr<Disseminate::RemoteAdd::EventT>& eventData)
 {
-    data->windowNumbers[eventData->uuid] = eventData->windowNumber;
     registerClient(type, eventData->uuid);
 }
 
@@ -903,9 +872,6 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged: {
-        auto wn = [nsevent windowNumber];
-        if (data->realWindow != wn)
-            data->realWindow = wn;
         auto on = data->mouseEventFunctions.begin();
         const auto end = data->mouseEventFunctions.end();
         while (on != end) {
@@ -920,9 +886,6 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
         break; }
     case NSKeyDown:
     case NSKeyUp: {
-        auto wn = [nsevent windowNumber];
-        if (data->realWindow != wn)
-            data->realWindow = wn;
         auto on = data->keyEventFunctions.begin();
         const auto end = data->keyEventFunctions.end();
         while (on != end) {

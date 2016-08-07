@@ -12,7 +12,6 @@ table Event
     type: Type;
     keyCode: long;
     location: Location;
-    windowNumber: int;
     modifiers: ulong = 0;
     timestamp: double = 0;
     repeat: bool = false;
