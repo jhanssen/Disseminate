@@ -298,13 +298,14 @@ static inline bool sendEventTo(const std::shared_ptr<EventLoopEvent>& event, NSW
 static inline void sendEvent(const std::shared_ptr<EventLoopEvent>& event)
 {
     ScopedPool pool;
-    NSWindow* win = [[NSApplication sharedApplication] keyWindow];
+    NSApplication* app = [NSApplication sharedApplication];
+    NSWindow* win = [app keyWindow];
     if (win && sendEventTo(event, win))
         return;
-    win = [[NSApplication sharedApplication] mainWindow];
+    win = [app mainWindow];
     if (win && sendEventTo(event, win))
         return;
-    auto windows = [[NSApplication sharedApplication] windows];
+    auto windows = [app windows];
     const auto count = [windows count];
     for (int i = 0; i < count; ++i) {
         win = [windows objectAtIndex:i];
