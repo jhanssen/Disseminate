@@ -57,6 +57,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->blacklistRadio, &QRadioButton::toggled, this, &MainWindow::blackListChanged);
 
     connect(ui->pushSettings, &QPushButton::clicked, this, &MainWindow::pushSettings);
+    connect(ui->reloadClients, &QPushButton::clicked, this, &MainWindow::reloadClients);
 
     messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
             const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
