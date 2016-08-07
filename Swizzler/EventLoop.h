@@ -6,23 +6,21 @@
 #include <map>
 #include <vector>
 #include <AppKit/NSEvent.h>
+#include "Events.h"
 
 class EventLoop;
 
 class EventLoopEvent
 {
 public:
-    enum Flag { None, Retain };
-    EventLoopEvent(NSEvent* event, Flag flag);
-    EventLoopEvent(NSEvent* event, Flag flag, double dx, double dy);
+    EventLoopEvent(const KeyEvent& event);
+    EventLoopEvent(const MouseEvent& event);
+    EventLoopEvent(NSEvent* event);
     ~EventLoopEvent();
 
-    NSEvent* take() { NSEvent* e = evt; evt = 0; return e; }
-
-    NSEvent* evt;
-    Flag flg;
-    bool hasDelta;
-    double deltaX, deltaY;
+    KeyEvent kevt;
+    MouseEvent mevt;
+    NSEvent* nsevt;
 };
 
 class EventLoopTimer : public std::enable_shared_from_this<EventLoopTimer>

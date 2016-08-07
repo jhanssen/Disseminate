@@ -101,24 +101,27 @@ static uintptr_t ProcessPending2 = reinterpret_cast<uintptr_t>(&ProcessPending2)
 
 EventLoop* EventLoop::sEventLoop = 0;
 
-EventLoopEvent::EventLoopEvent(NSEvent* event, Flag flag)
-    : evt(event), flg(flag), hasDelta(false), deltaX(0.), deltaY(0.)
+EventLoopEvent::EventLoopEvent(const KeyEvent& evt)
+    : kevt(evt), nsevt(0)
 {
-    if (flg == Retain)
-        [evt retain];
 }
 
-EventLoopEvent::EventLoopEvent(NSEvent* event, Flag flag, double dx, double dy)
-    : evt(event), flg(flag), hasDelta(true), deltaX(dx), deltaY(dy)
+EventLoopEvent::EventLoopEvent(const MouseEvent& evt)
+    : mevt(evt), nsevt(0)
 {
-    if (flg == Retain)
-        [evt retain];
+}
+
+EventLoopEvent::EventLoopEvent(NSEvent* evt)
+    : nsevt(evt)
+{
+    [nsevt retain];
 }
 
 EventLoopEvent::~EventLoopEvent()
 {
-    if (evt && flg == Retain)
-        [evt release];
+    if (nsevt) {
+        [nsevt release];
+    }
 }
 
 EventLoop::EventLoop()
@@ -133,19 +136,101 @@ EventLoop* EventLoop::eventLoop()
     return sEventLoop;
 }
 
+#warning this really needs to be a thread-local
 struct {
     bool has;
     float dx, dy;
 } static sDelta = { false, 0., 0, };
 
-static inline void sendEvent(NSEvent* event)
+static inline NSEvent* makeEvent(const std::shared_ptr<EventLoopEvent>& event, long wno)
 {
-    NSWindow* win = [[NSApplication sharedApplication] keyWindow];
-    if (!win) {
-        printf("out 1\n");
-        return;
+    ScopedPool pool;
+
+    if (event->kevt.isValid()) {
+        auto& kevt = event->kevt;
+        NSEventType type = static_cast<NSEventType>(0);
+        NSPoint location;
+        switch (kevt.type()) {
+        case Disseminate::Key::Type_Up:
+            type = NSKeyUp;
+            break;
+        case Disseminate::Key::Type_Down:
+            type = NSKeyDown;
+            break;
+        }
+        if (!type) {
+            printf("no valid event type\n");
+            return 0;
+        }
+        location.x = kevt.x();
+        location.y = kevt.y();
+
+        auto wrapper = fromStdString(kevt.text());
+        NSEvent* evt = [NSEvent keyEventWithType:type location:location modifierFlags:kevt.modifiers() timestamp:kevt.timestamp()
+                                    windowNumber:wno context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
+                                       isARepeat:kevt.repeat() keyCode:kevt.keyCode()];
+        [evt retain];
+        return evt;
+    } else if (event->mevt.isValid()) {
+        auto& mevt = event->mevt;
+        NSEventType type = static_cast<NSEventType>(0);
+        NSPoint location;
+        int count = 1;
+        float pressure = 1;
+        switch (mevt.button()) {
+        case Disseminate::Mouse::Button_Left:
+            switch (mevt.type()) {
+            case Disseminate::Mouse::Type_Press:
+                type = NSLeftMouseDown;
+                break;
+            case Disseminate::Mouse::Type_Release:
+                type = NSLeftMouseUp;
+                break;
+            case Disseminate::Mouse::Type_Move:
+                type = NSLeftMouseDragged;
+                break;
+            }
+            break;
+        case Disseminate::Mouse::Button_Middle:
+#warning handle me
+            break;
+        case Disseminate::Mouse::Button_Right:
+            switch (mevt.type()) {
+            case Disseminate::Mouse::Type_Press:
+                type = NSRightMouseDown;
+                break;
+            case Disseminate::Mouse::Type_Release:
+                type = NSRightMouseUp;
+                break;
+            case Disseminate::Mouse::Type_Move:
+                type = NSRightMouseDragged;
+                break;
+            }
+            break;
+        case Disseminate::Mouse::Button_None:
+            count = 0;
+            pressure = 0;
+            type = NSMouseMoved;
+            break;
+        }
+        if (!type) {
+            printf("no valid event type\n");
+            return 0;
+        }
+        location.x = mevt.x();
+        location.y = mevt.y();
+
+        NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:mevt.modifiers() timestamp:mevt.timestamp()
+                                      windowNumber:wno context:0 eventNumber:0 clickCount:count pressure:pressure];
+        [evt retain];
+        return evt;
     }
-    /*
+    return 0;
+}
+
+static inline bool sendEventTo(const std::shared_ptr<EventLoopEvent>& event, NSWindow* win)
+{
+        /*
     NSView* view = [win contentView];
     if (!view) {
         printf("out 2\n");
@@ -156,48 +241,75 @@ static inline void sendEvent(NSEvent* event)
         printf("out 3\n");
         return;
         }
-    */
+        */
+
     NSResponder* responder = [win firstResponder];
     if (!responder) {
         printf("out 2\n");
-        return;
+        return false;
     }
     if (![responder isKindOfClass:[NSView class]]) {
         printf("out 3\n");
-        return;
+        return false;
     }
+
+    NSEvent* nsevent = makeEvent(event, [win windowNumber]);
+    assert(nsevent);
+
     NSView* target = (NSView*)responder;
-    switch ([event type]) {
-    case NSLeftMouseDown:
-        [target mouseDown:event];
-        break;
+    switch ([nsevent type]) {
+    case NSLeftMouseDown: {
+        NSPoint loc = [nsevent locationInWindow];
+        printf("balle klorin %f %f %ld\n", loc.x, loc.y, [nsevent windowNumber]);
+        [target mouseDown:nsevent];
+        break; }
     case NSRightMouseDown:
-        [target rightMouseDown:event];
+        [target rightMouseDown:nsevent];
         break;
     case NSLeftMouseUp:
-        [target mouseUp:event];
+        [target mouseUp:nsevent];
         break;
     case NSRightMouseUp:
-        [target rightMouseUp:event];
+        [target rightMouseUp:nsevent];
         break;
     case NSMouseMoved:
-        [target mouseMoved:event];
+        [target mouseMoved:nsevent];
         break;
     case NSLeftMouseDragged:
-        [target mouseDragged:event];
+        [target mouseDragged:nsevent];
         break;
     case NSRightMouseDragged:
-        [target rightMouseDragged:event];
+        [target rightMouseDragged:nsevent];
         break;
     case NSKeyDown:
-        [target keyDown:event];
+        [target keyDown:nsevent];
         break;
     case NSKeyUp:
-        [target keyUp:event];
+        [target keyUp:nsevent];
         break;
     default:
         printf("no joy\n");
         break;
+    }
+    [nsevent release];
+    return true;
+}
+
+static inline void sendEvent(const std::shared_ptr<EventLoopEvent>& event)
+{
+    ScopedPool pool;
+    NSWindow* win = [[NSApplication sharedApplication] keyWindow];
+    if (win && sendEventTo(event, win))
+        return;
+    win = [[NSApplication sharedApplication] mainWindow];
+    if (win && sendEventTo(event, win))
+        return;
+    auto windows = [[NSApplication sharedApplication] windows];
+    const auto count = [windows count];
+    for (int i = 0; i < count; ++i) {
+        win = [windows objectAtIndex:i];
+        if (win && sendEventTo(event, win))
+            return;
     }
 }
 
@@ -236,21 +348,19 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                 if (!sPendingEvents.empty()) {
                     auto it = sPendingEvents.begin();
                     const auto end = sPendingEvents.end();
-                    NSApplication* app = [NSApplication sharedApplication];
                     while (it != end) {
                         const auto& fake = *it;
-                        event = fake->take();
-                        if (fake->hasDelta) {
+                        if (fake->mevt.isValid() && fake->mevt.hasDelta()) {
                             sDelta.has = true;
-                            sDelta.dx = fake->deltaX;
-                            sDelta.dy = fake->deltaY;
+                            sDelta.dx = fake->mevt.deltaX();
+                            sDelta.dy = fake->mevt.deltaY();
                         } else {
                             sDelta.has = false;
                         }
                         NSPoint loc = [event locationInWindow];
                         printf("sending fake event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);
 
-                        sendEvent(event);
+                        sendEvent(fake);
                         // [app sendEvent:event];
                         ++it;
                     }
@@ -261,7 +371,7 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
             }
         }
 #warning maybe only look at mouse/key events or give eventloop a list of wanted types?
-        std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event, EventLoopEvent::None);
+        std::shared_ptr<EventLoopEvent> shared = std::make_shared<EventLoopEvent>(event);
         if (sEventCallback && !sEventCallback(shared)) {
             NSPoint loc = [event locationInWindow];
             printf("blocking real event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);

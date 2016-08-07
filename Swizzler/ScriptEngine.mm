@@ -4,113 +4,9 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
-#include <MouseEvent_generated.h>
-#include "CocoaUtils.h"
 #import <Cocoa/Cocoa.h>
 #include "EventLoop.h"
-
-template<typename T>
-class Detachable
-{
-public:
-    virtual ~Detachable() { }
-
-    void detach()
-    {
-        if (internal.use_count() > 1)
-            detachInternal();
-    }
-
-protected:
-    virtual void detachInternal() = 0;
-
-protected:
-    std::shared_ptr<T> internal;
-};
-
-class MouseEvent : public Detachable<Disseminate::Mouse::EventT>
-{
-public:
-    MouseEvent(int _type, int _button, double _x, double _y)
-    {
-        internal = std::make_shared<Disseminate::Mouse::EventT>();
-        internal->type = static_cast<Disseminate::Mouse::Type>(_type);
-        internal->button = static_cast<Disseminate::Mouse::Button>(_button);
-        internal->modifiers = 0;
-        internal->timestamp = timeIntervalSinceSystemStartup();
-        internal->clickCount = 0;
-        internal->pressure = 0.;
-
-        internal->location = std::make_unique<Disseminate::Mouse::Location>(_x, _y);
-    }
-    MouseEvent(std::unique_ptr<Disseminate::Mouse::EventT>& unique)
-    {
-        internal.reset(unique.release());
-    }
-    MouseEvent(NSEvent* event);
-
-    double x() { return internal->location->x(); }
-    void setX(double x) { detach(); internal->location->mutate_x(x); }
-    float y() { return internal->location->y(); }
-    void setY(double y) { detach(); internal->location->mutate_y(y); }
-
-    int32_t type() { return internal->type; }
-    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Mouse::Type>(arg); }
-
-    int32_t button() { return internal->button; }
-    void setButton(int32_t arg) { detach(); internal->button = static_cast<Disseminate::Mouse::Button>(arg); };
-
-    uint16_t modifiers() { return internal->modifiers; }
-    void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
-
-    double timestamp() { return internal->timestamp; }
-    void setTimestamp(double arg) { detach(); internal->timestamp = arg; };
-
-    int32_t clickCount() { return internal->clickCount; }
-    void setClickCount(int32_t arg) { detach(); internal->clickCount = arg; };
-
-    double pressure() { return internal->pressure; }
-    void setPressure(double arg) { detach(); internal->pressure = arg; }
-
-    bool hasDelta() const { return internal->delta.get() != 0; }
-    double deltaX() { return internal->delta ? internal->delta->x() : 0.; };
-    void setDeltaX(double x) { if (internal->delta) internal->delta->mutate_x(x); else makeDelta(x, 0.); }
-    double deltaY() { return internal->delta ? internal->delta->y() : 0.; };
-    void setDeltaY(double y) { if (internal->delta) internal->delta->mutate_y(y); else makeDelta(0., y); }
-
-    std::string fromUuid() { return internal->fromUuid; }
-
-    MouseEvent clone() { return MouseEvent(*this); }
-
-    Disseminate::Mouse::EventT* flat() { return internal.get(); }
-
-protected:
-    virtual void detachInternal()
-    {
-        std::shared_ptr<Disseminate::Mouse::EventT> other = internal;
-        internal = std::make_shared<Disseminate::Mouse::EventT>();
-        internal->type = other->type;
-        internal->button = other->button;
-        internal->modifiers = other->modifiers;
-        internal->timestamp = other->timestamp;
-        internal->clickCount = other->clickCount;
-        internal->pressure = other->pressure;
-        internal->fromUuid = other->fromUuid;
-
-        if (other->location) {
-            internal->location = std::make_unique<Disseminate::Mouse::Location>(other->location->x(), other->location->y());
-        }
-        if (other->delta) {
-            internal->delta = std::make_unique<Disseminate::Mouse::Location>(other->delta->x(), other->delta->y());
-        }
-    }
-
-private:
-    void makeDelta(double x, double y)
-    {
-        internal->delta = std::make_unique<Disseminate::Mouse::Location>(x, y);
-    }
-};
+#include "Events.h"
 
 MouseEvent::MouseEvent(NSEvent* event)
 {
@@ -160,74 +56,6 @@ MouseEvent::MouseEvent(NSEvent* event)
     internal->pressure = [event pressure];
     internal->timestamp = [event timestamp];
 }
-
-class KeyEvent : public Detachable<Disseminate::Key::EventT>
-{
-public:
-    KeyEvent(int _type, int _code, double _x, double _y)
-    {
-        internal = std::make_shared<Disseminate::Key::EventT>();
-        internal->type = static_cast<Disseminate::Key::Type>(_type);
-        internal->keyCode = _code;
-        internal->modifiers = 0;
-        internal->timestamp = timeIntervalSinceSystemStartup();
-        internal->repeat = false;
-
-        internal->location = std::make_unique<Disseminate::Key::Location>(_x, _y);
-    }
-    KeyEvent(std::unique_ptr<Disseminate::Key::EventT>& unique)
-    {
-        internal.reset(unique.release());
-    }
-    KeyEvent(NSEvent* event);
-
-    double x() { return internal->location->x(); }
-    void setX(double x) { detach(); internal->location->mutate_x(x); }
-    float y() { return internal->location->y(); }
-    void setY(double y) { detach(); internal->location->mutate_y(y); }
-
-    int32_t type() { return internal->type; }
-    void setType(int32_t arg) { detach(); internal->type = static_cast<Disseminate::Key::Type>(arg); }
-
-    int32_t keyCode() { return internal->keyCode; }
-    void setKeyCode(int32_t arg) { detach(); internal->keyCode = arg; }
-
-    uint32_t modifiers() { return internal->modifiers; }
-    void setModifiers(uint16_t arg) { detach(); internal->modifiers = arg; };
-
-    double timestamp() { return internal->timestamp; }
-    void setTimestamp(double arg) { detach(); internal->timestamp = arg; };
-
-    std::string text() { return internal->text; }
-    void setText(std::string arg) { detach(); internal->text = arg; }
-
-    bool repeat() { return internal->repeat; }
-    void setRepeat(bool arg) { detach(); internal->repeat = arg; }
-
-    std::string fromUuid() { return internal->fromUuid; }
-
-    KeyEvent clone() { return KeyEvent(*this); }
-
-    Disseminate::Key::EventT* flat() { return internal.get(); }
-
-protected:
-    virtual void detachInternal()
-    {
-        std::shared_ptr<Disseminate::Key::EventT> other = internal;
-        internal = std::make_shared<Disseminate::Key::EventT>();
-        internal->type = other->type;
-        internal->keyCode = other->keyCode;
-        internal->modifiers = other->modifiers;
-        internal->timestamp = other->timestamp;
-        internal->text = other->text;
-        internal->repeat = other->repeat;
-        internal->fromUuid = other->fromUuid;
-
-        if (other->location) {
-            internal->location = std::make_unique<Disseminate::Key::Location>(other->location->x(), other->location->y());
-        }
-    }
-};
 
 KeyEvent::KeyEvent(NSEvent* event)
 {
@@ -466,60 +294,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             return true;
         };
         mouseEvent["inject"] = [this](MouseEvent event) {
-            ScopedPool pool;
-            NSEventType type = static_cast<NSEventType>(0);
-            NSPoint location;
-            int count = 1;
-            float pressure = 1;
-            switch (event.button()) {
-            case Disseminate::Mouse::Button_Left:
-                switch (event.type()) {
-                case Disseminate::Mouse::Type_Press:
-                    type = NSLeftMouseDown;
-                    break;
-                case Disseminate::Mouse::Type_Release:
-                    type = NSLeftMouseUp;
-                    break;
-                case Disseminate::Mouse::Type_Move:
-                    type = NSLeftMouseDragged;
-                    break;
-                }
-                break;
-            case Disseminate::Mouse::Button_Middle:
-#warning handle me
-                break;
-            case Disseminate::Mouse::Button_Right:
-                switch (event.type()) {
-                case Disseminate::Mouse::Type_Press:
-                    type = NSRightMouseDown;
-                    break;
-                case Disseminate::Mouse::Type_Release:
-                    type = NSRightMouseUp;
-                    break;
-                case Disseminate::Mouse::Type_Move:
-                    type = NSRightMouseDragged;
-                    break;
-                }
-                break;
-            case Disseminate::Mouse::Button_None:
-                count = 0;
-                pressure = 0;
-                type = NSMouseMoved;
-                break;
-            }
-            if (!type) {
-                printf("no valid event type\n");
-                return;
-            }
-            location.x = event.x();
-            location.y = event.y();
-
-            NSEvent* evt = [NSEvent mouseEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:0 context:0 eventNumber:0 clickCount:count pressure:pressure];
-            if (event.hasDelta())
-                EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain, event.deltaX(), event.deltaY()));
-            else
-                EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
+            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(event));
         };
     }
 
@@ -564,29 +339,7 @@ ScriptEngine::ScriptEngine(const std::string& uuid)
             return true;
         };
         keyEvent["inject"] = [this](KeyEvent event) {
-            ScopedPool pool;
-            NSEventType type = static_cast<NSEventType>(0);
-            NSPoint location;
-            switch (event.type()) {
-            case Disseminate::Key::Type_Up:
-                type = NSKeyUp;
-                break;
-            case Disseminate::Key::Type_Down:
-                type = NSKeyDown;
-                break;
-            }
-            if (!type) {
-                printf("no valid event type\n");
-                return;
-            }
-            location.x = event.x();
-            location.y = event.y();
-
-            auto wrapper = fromStdString(event.text());
-            NSEvent* evt = [NSEvent keyEventWithType:type location:location modifierFlags:event.modifiers() timestamp:event.timestamp()
-                            windowNumber:0 context:0 characters:wrapper->str() charactersIgnoringModifiers:wrapper->str()
-                            isARepeat:event.repeat() keyCode: event.keyCode()];
-            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(evt, EventLoopEvent::Retain));
+            EventLoop::eventLoop()->postEvent(std::make_shared<EventLoopEvent>(event));
         };
     }
 
@@ -863,7 +616,8 @@ bool ScriptEngine::processLocalEvent(const std::shared_ptr<EventLoopEvent>& even
 {
     sel::HandlerScope scope(state->GetExceptionHandler());
 
-    NSEvent* nsevent = event->evt;
+    NSEvent* nsevent = event->nsevt;
+    assert(nsevent);
     switch ([nsevent type]) {
     case NSLeftMouseDown:
     case NSLeftMouseUp:
