@@ -3,8 +3,85 @@
 #include <unordered_set>
 #include <stdio.h>
 #include <objc/runtime.h>
+#include <pthread.h>
 #include "CocoaUtils.h"
 #import  <Cocoa/Cocoa.h>
+
+// silly Apple making me do this, I hear Xcode 8 will have thread_local, just ~6 years late
+template<typename T>
+class ThreadLocalStore
+{
+public:
+    ThreadLocalStore()
+    {
+        pthread_once(&tlsOnce, init);
+    }
+
+    void set(const T& t)
+    {
+        if (void* ptr = pthread_getspecific(tls)) {
+            *static_cast<T*>(ptr) = t;
+        } else {
+            pthread_setspecific(tls, new T(t));
+        }
+    }
+
+    void remove()
+    {
+        if (void* ptr =pthread_getspecific(tls)) {
+            delete static_cast<T*>(ptr);
+            pthread_setspecific(tls, 0);
+        }
+    }
+
+    T* get()
+    {
+        if (void* ptr = pthread_getspecific(tls)) {
+            return static_cast<T*>(ptr);
+        } else {
+            T* t = new T;
+            pthread_setspecific(tls, t);
+            return t;
+        }
+    }
+    const T* get() const
+    {
+        if (const void* ptr = pthread_getspecific(tls)) {
+            return static_cast<const T*>(ptr);
+        } else {
+            T* t = new T;
+            pthread_setspecific(tls, t);
+            return t;
+        }
+    }
+    T* operator->()
+    {
+        return get();
+    }
+    const T* operator->() const
+    {
+        return get();
+    }
+
+private:
+    static void init()
+    {
+        pthread_key_create(&tls, destroy);
+    }
+    static void destroy(void* obj)
+    {
+        delete static_cast<T*>(obj);
+    }
+
+private:
+    static pthread_once_t tlsOnce;
+    static pthread_key_t tls;
+};
+
+template<typename T>
+pthread_once_t ThreadLocalStore<T>::tlsOnce = PTHREAD_ONCE_INIT;
+template<typename T>
+pthread_key_t ThreadLocalStore<T>::tls;
 
 static std::function<bool(const std::shared_ptr<EventLoopEvent>&)> sEventCallback;
 static std::function<void()> sTerminateCallback;
@@ -136,11 +213,11 @@ EventLoop* EventLoop::eventLoop()
     return sEventLoop;
 }
 
-#warning this really needs to be a thread-local
-struct {
+struct DeltaData {
     bool has;
-    float dx, dy;
-} static sDelta = { false, 0., 0, };
+    double dx, dy;
+};
+ThreadLocalStore<DeltaData> sDelta;
 
 static inline NSEvent* makeEvent(const std::shared_ptr<EventLoopEvent>& event, long wno)
 {
@@ -352,11 +429,9 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
                     while (it != end) {
                         const auto& fake = *it;
                         if (fake->mevt.isValid() && fake->mevt.hasDelta()) {
-                            sDelta.has = true;
-                            sDelta.dx = fake->mevt.deltaX();
-                            sDelta.dy = fake->mevt.deltaY();
+                            sDelta.set({ true, fake->mevt.deltaX(), fake->mevt.deltaY() });
                         } else {
-                            sDelta.has = false;
+                            sDelta->has = false;
                         }
                         NSPoint loc = [event locationInWindow];
                         printf("sending fake event %lu window %lu %f %f ctx %p ts %f\n", [event type], [event windowNumber], loc.x, loc.y, [event context], [event timestamp]);
@@ -385,8 +460,8 @@ static NSEvent* patchedNextEventMatchingMask(id self, SEL _cmd, NSUInteger mask,
     case NSMouseMoved:
     case NSLeftMouseDragged:
     case NSRightMouseDragged:
-        if (sDelta.has)
-            sDelta.has = false;
+        if (sDelta->has)
+            sDelta->has = false;
         break;
     default:
         break;
@@ -409,16 +484,16 @@ typedef CGFloat (*FloatSignature)(id self, SEL _cmd);
 static IMP sDeltaX = NULL;
 static CGFloat patchedDeltaX(id self, SEL _cmd)
 {
-    if (sDelta.has)
-        return sDelta.dx;
+    if (sDelta->has)
+        return sDelta->dx;
     FloatSignature sig = (FloatSignature)sDeltaX;
     return sig(self, _cmd);
 }
 static IMP sDeltaY = NULL;
 static CGFloat patchedDeltaY(id self, SEL _cmd)
 {
-    if (sDelta.has)
-        return sDelta.dy;
+    if (sDelta->has)
+        return sDelta->dy;
     FloatSignature sig = (FloatSignature)sDeltaY;
     return sig(self, _cmd);
 }
