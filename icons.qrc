@@ -8,5 +8,8 @@
         <file>icons/ic_keyboard_black_48dp.png</file>
         <file>icons/ic_content_copy_black_48dp.png</file>
         <file>icons/ic_mouse_black_48dp.png</file>
+        <file>icons/ic_add_black_48dp.png</file>
+        <file>icons/ic_edit_black_48dp.png</file>
+        <file>icons/ic_remove_black_48dp.png</file>
     </qresource>
 </RCC>

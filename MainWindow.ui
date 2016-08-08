@@ -14,83 +14,99 @@
    <string>Disseminate</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_4">
+   <layout class="QVBoxLayout" name="verticalLayout_3">
     <item>
-     <widget class="QGroupBox" name="clientGroup">
+     <widget class="QGroupBox" name="configurationGroup">
       <property name="title">
-       <string>Clients</string>
+       <string>Configuration</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
-        <widget class="QListWidget" name="clientList"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushSettings">
-         <property name="text">
-          <string>Push Settings</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="reloadClients">
-         <property name="text">
-          <string>Reload Clients</string>
-         </property>
-        </widget>
+        <widget class="QComboBox" name="configuration"/>
        </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QGroupBox" name="keysGroup">
-      <property name="title">
-       <string>Keys</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <widget class="QListWidget" name="keyList"/>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QGroupBox" name="clientGroup">
+        <property name="title">
+         <string>Clients</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
-          <widget class="QPushButton" name="addKey">
+          <widget class="QListWidget" name="clientList"/>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushSettings">
            <property name="text">
-            <string>Add Key</string>
+            <string>Push Settings</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="removeKey">
+          <widget class="QPushButton" name="reloadClients">
            <property name="text">
-            <string>Remove Key</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <item>
-          <widget class="QRadioButton" name="whitelistRadio">
-           <property name="text">
-            <string>Whitelist</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QRadioButton" name="blacklistRadio">
-           <property name="text">
-            <string>Blacklist</string>
+            <string>Reload Clients</string>
            </property>
           </widget>
          </item>
         </layout>
-       </item>
-      </layout>
-     </widget>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="keysGroup">
+        <property name="title">
+         <string>Keys</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QListWidget" name="keyList"/>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <widget class="QPushButton" name="addKey">
+             <property name="text">
+              <string>Add Key</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="removeKey">
+             <property name="text">
+              <string>Remove Key</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QRadioButton" name="whitelistRadio">
+             <property name="text">
+              <string>Whitelist</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="blacklistRadio">
+             <property name="text">
+              <string>Blacklist</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -128,6 +144,10 @@
    <addaction name="actionStop"/>
    <addaction name="separator"/>
    <addaction name="actionTemplates"/>
+   <addaction name="separator"/>
+   <addaction name="actionAddConfiguration"/>
+   <addaction name="actionRemoveConfiguration"/>
+   <addaction name="actionEdit_Configuration"/>
   </widget>
   <action name="actionStart">
    <property name="icon">
@@ -168,6 +188,39 @@
    </property>
    <property name="text">
     <string>Templates</string>
+   </property>
+  </action>
+  <action name="actionAddConfiguration">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/icons/ic_add_black_48dp.png</normaloff>:/icons/icons/ic_add_black_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Add Configuration</string>
+   </property>
+  </action>
+  <action name="actionRemoveConfiguration">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/icons/ic_remove_black_48dp.png</normaloff>:/icons/icons/ic_remove_black_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Remove Configuration</string>
+   </property>
+  </action>
+  <action name="actionEdit_Configuration">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/icons/icons/ic_edit_black_48dp.png</normaloff>:/icons/icons/ic_edit_black_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Edit Configuration</string>
    </property>
   </action>
  </widget>
