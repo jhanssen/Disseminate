@@ -49,6 +49,7 @@ set(COCOA_LIBRARIES
 
 set(SOURCES
     main.cpp
+    Configuration.mm
     MainWindow.cpp
     Utils.mm
     ProcessInformation.mm

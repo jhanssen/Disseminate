@@ -66,6 +66,10 @@ private slots:
 
     void pushSettings();
 
+    void addConfiguration();
+    void removeConfiguration();
+    void editConfiguration();
+
 private:
     void saveConfig();
     void loadConfig();

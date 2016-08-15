@@ -147,7 +147,7 @@
    <addaction name="separator"/>
    <addaction name="actionAddConfiguration"/>
    <addaction name="actionRemoveConfiguration"/>
-   <addaction name="actionEdit_Configuration"/>
+   <addaction name="actionEditConfiguration"/>
   </widget>
   <action name="actionStart">
    <property name="icon">
@@ -211,7 +211,7 @@
     <string>Remove Configuration</string>
    </property>
   </action>
-  <action name="actionEdit_Configuration">
+  <action name="actionEditConfiguration">
    <property name="enabled">
     <bool>false</bool>
    </property>

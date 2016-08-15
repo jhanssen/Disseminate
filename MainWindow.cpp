@@ -22,6 +22,7 @@
 #include "Utils.h"
 #include "Helpers.h"
 #include "TemplateChooser.h"
+#include "Configuration.h"
 #include "ui_MainWindow.h"
 #include <memory>
 #include <FlatbufferTypes.h>
@@ -58,6 +59,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->pushSettings, &QPushButton::clicked, this, &MainWindow::pushSettings);
     connect(ui->reloadClients, &QPushButton::clicked, this, &MainWindow::reloadClients);
+
+    connect(ui->actionAddConfiguration, &QAction::triggered, this, &MainWindow::addConfiguration);
+    connect(ui->actionRemoveConfiguration, &QAction::triggered, this, &MainWindow::removeConfiguration);
+    connect(ui->actionEditConfiguration, &QAction::triggered, this, &MainWindow::editConfiguration);
 
     messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
             const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
@@ -495,4 +500,18 @@ void MainWindow::templateChosen(int32_t pid, const QString& name)
     for (const auto& key : keys) {
         //broadcast::addKeyForWindow(psn, key.first, key.second);
     }
+}
+
+void MainWindow::addConfiguration()
+{
+    Configuration config;
+    config.exec();
+}
+
+void MainWindow::editConfiguration()
+{
+}
+
+void MainWindow::removeConfiguration()
+{
 }
