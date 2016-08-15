@@ -27,6 +27,8 @@
 #include <FlatbufferTypes.h>
 #include <Settings_generated.h>
 #include <RemoteAdd_generated.h>
+#include <QFile>
+#include <QProcess>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
@@ -88,14 +90,31 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+const Configuration::Item* MainWindow::currentConfiguration()
+{
+    const QString txt = ui->configuration->currentText();
+    if (txt.isEmpty())
+        return 0;
+
+    QVector<Configuration::Item>::const_iterator cfg = configs.begin();
+    const QVector<Configuration::Item>::const_iterator end = configs.end();
+    while (cfg != end) {
+        if (cfg->name == txt) {
+            return &*cfg;
+        }
+        ++cfg;
+    }
+    return 0;
+}
+
 void MainWindow::startBroadcast()
 {
     if (broadcasting)
         return;
-    if (ui->clientList->count() < 2) {
-        QMessageBox::information(this, "No windows to broadcast", "Add at least two windows before broadcasting");
-        return;
-    }
+    // if (ui->clientList->count() < 2) {
+    //     QMessageBox::information(this, "No windows to broadcast", "Add at least two windows before broadcasting");
+    //     return;
+    // }
 #warning implement me
     // if (!broadcast::start()) {
     //     QMessageBox::critical(this, "Unable to broadcast", "Unable to broadcast, ensure that the app is allowed to control your computer");
@@ -104,6 +123,8 @@ void MainWindow::startBroadcast()
     broadcasting = true;
     ui->actionStart->setEnabled(false);
     ui->actionStop->setEnabled(true);
+
+    launchClients();
 }
 
 void MainWindow::stopBroadcast()
@@ -115,6 +136,52 @@ void MainWindow::stopBroadcast()
 #warning implement me
     //broadcast::stop();
     broadcasting = false;
+}
+
+void MainWindow::launchClients()
+{
+    if (!running.isEmpty())
+        return;
+    const Configuration::Item* config = currentConfiguration();
+    if (!config)
+        return;
+    // assume the executable name is the app name
+    QString app = config->appPath;
+    QString exe;
+    {
+        int ls = app.lastIndexOf('/');
+        if (ls != -1) {
+            int la = app.lastIndexOf(".app");
+            if (la > ls) {
+                exe = app.mid(ls + 1, (la - ls) - 1);
+            }
+        }
+    }
+    if (exe.isEmpty())
+        return;
+    app += "/Contents/MacOS/" + exe;
+    if (QFile::exists(app)) {
+        QString swizzlerPath = QApplication::applicationDirPath() + "/../../../Swizzler/libSwizzler.dylib";
+        //QMessageBox::critical(0, swizzlerPath, swizzlerPath);
+        app = "\"" + app + "\"";
+        if (QFile::exists(swizzlerPath)) {
+            for (const auto& client : config->clients) {
+                QProcess* proc = new QProcess(this);
+                connect(proc, &QProcess::errorOccurred, [proc](QProcess::ProcessError error) {
+                        QMessageBox::critical(0, "Launch error", "Launch error " + proc->errorString());
+                    });
+                QProcessEnvironment env = proc->processEnvironment();
+                env.insert("DYLD_INSERT_LIBRARIES", swizzlerPath);
+                env.insert("DISSEMINATE_CLIENT", client);
+                proc->setProcessEnvironment(env);
+                proc->start(app);
+
+                QMessageBox::critical(0, app, app);
+
+                running[client] = proc;
+            }
+        }
+    }
 }
 
 void MainWindow::pushSettings()

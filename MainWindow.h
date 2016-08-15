@@ -34,6 +34,7 @@ class Disseminate;
 }
 
 class QListWidgetItem;
+class QProcess;
 
 class MainWindow : public QMainWindow
 {
@@ -79,6 +80,10 @@ private:
     void loadConfig();
     void applyConfig();
 
+    void launchClients();
+
+    const Configuration::Item* currentConfiguration();
+
 private:
     Ui::Disseminate *ui;
     bool broadcasting;
@@ -98,6 +103,8 @@ private:
         std::shared_ptr<MessagePortRemote> port;
     };
     std::map<int32_t, RemotePort> remotePorts;
+
+    QMap<QString, QProcess*> running;
 };
 
 #endif // DISSEMINATE_H
