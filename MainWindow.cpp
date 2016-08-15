@@ -22,7 +22,6 @@
 #include "Utils.h"
 #include "Helpers.h"
 #include "TemplateChooser.h"
-#include "Configuration.h"
 #include "ui_MainWindow.h"
 #include <memory>
 #include <FlatbufferTypes.h>
@@ -356,6 +355,28 @@ void MainWindow::loadConfig()
             prefs.exclusions.append(ekey);
         }
     }
+
+    ui->configuration->clear();
+    configs.clear();
+    QList<QVariant> configurations = settings.value("configurations").toList();
+    for (const auto& config : configurations) {
+        const QVariantMap cm = config.toMap();
+        if (cm.contains("appPath") && cm.contains("name")) {
+            Configuration::Item item;
+            item.name = cm["name"].toString();
+            item.appPath = cm["appPath"].toString();
+            item.appIcon = cm["appIcon"].value<QPixmap>();
+            if (cm.contains("clients")) {
+                QList<QVariant> clients = cm["clients"].toList();
+                for (const auto& client : clients) {
+                    item.clients.append(client.toString());
+                }
+            }
+            configs.append(item);
+
+            ui->configuration->addItem(item.appIcon, item.name);
+        }
+    }
 }
 
 void MainWindow::saveConfig()
@@ -426,6 +447,24 @@ void MainWindow::saveConfig()
         }
     }
     settings.setValue("exclusions", exclusions);
+
+    QList<QVariant> configurations;
+    {
+        for (const auto& item : configs) {
+            QVariantMap cfg;
+            cfg["name"] = item.name;
+            cfg["appPath"] = item.appPath;
+            cfg["appIcon"] = item.appIcon;
+            QList<QVariant> clients;
+            for (const auto& client : item.clients) {
+                clients.append(client);
+            }
+            cfg["clients"] = clients;
+
+            configurations.append(cfg);
+        }
+    }
+    settings.setValue("configurations", configurations);
 }
 
 void MainWindow::applyConfig()
@@ -505,13 +544,90 @@ void MainWindow::templateChosen(int32_t pid, const QString& name)
 void MainWindow::addConfiguration()
 {
     Configuration config;
+    connect(&config, &Configuration::itemSelected, this, &MainWindow::configurationAdded);
     config.exec();
 }
 
 void MainWindow::editConfiguration()
 {
+    if (configs.isEmpty())
+        return;
+    const QString txt = ui->configuration->currentText();
+    if (txt.isEmpty())
+        return;
+
+    // find our item
+    Configuration::Item item;
+    for (const auto& i : configs) {
+        if (i.name == txt) {
+            item = i;
+            break;
+        }
+    }
+    if (item.name.isEmpty())
+        return;
+
+    Configuration config;
+    config.setItem(item);
+    connect(&config, &Configuration::itemSelected, this, &MainWindow::configurationEdited);
+    config.exec();
 }
 
 void MainWindow::removeConfiguration()
 {
+    const QString txt = ui->configuration->currentText();
+    if (txt.isEmpty())
+        return;
+
+    QVector<Configuration::Item>::iterator cfg = configs.begin();
+    const QVector<Configuration::Item>::const_iterator end = configs.end();
+    while (cfg != end) {
+        if (cfg->name == txt) {
+            configs.erase(cfg);
+            for (int i = 0; i < ui->configuration->count(); ++i) {
+                if (ui->configuration->itemText(i) == txt) {
+                    ui->configuration->removeItem(i);
+                    break;
+                }
+            }
+            break;
+        }
+        ++cfg;
+    }
+
+    saveConfig();
+}
+
+void MainWindow::configurationAdded(const Configuration::Item& item)
+{
+    if (item.name.isEmpty())
+        return;
+    for (const auto& i : configs) {
+        if (i.name == item.name)
+            return;
+    }
+    configs.append(item);
+    ui->configuration->addItem(item.appIcon, item.name);
+
+    saveConfig();
+}
+
+void MainWindow::configurationEdited(const Configuration::Item& item)
+{
+    if (item.name.isEmpty())
+        return;
+    for (auto& i : configs) {
+        if (i.name == item.name) {
+            i = item;
+            for (int i = 0; i < ui->configuration->count(); ++i) {
+                if (ui->configuration->itemText(i) == item.name) {
+                    ui->configuration->setItemIcon(i, item.appIcon);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    saveConfig();
 }

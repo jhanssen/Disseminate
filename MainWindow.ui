@@ -200,9 +200,6 @@
    </property>
   </action>
   <action name="actionRemoveConfiguration">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="icon">
     <iconset resource="icons.qrc">
      <normaloff>:/icons/icons/ic_remove_black_48dp.png</normaloff>:/icons/icons/ic_remove_black_48dp.png</iconset>
@@ -212,9 +209,6 @@
    </property>
   </action>
   <action name="actionEditConfiguration">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="icon">
     <iconset resource="icons.qrc">
      <normaloff>:/icons/icons/ic_edit_black_48dp.png</normaloff>:/icons/icons/ic_edit_black_48dp.png</iconset>

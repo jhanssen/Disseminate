@@ -21,6 +21,8 @@
 
 #include <QMainWindow>
 #include <QMap>
+#include <QVector>
+#include "Configuration.h"
 #include "ProcessInformation.h"
 #include "Preferences.h"
 #include "Templates.h"
@@ -46,6 +48,8 @@ private slots:
     void preferencesChanged(const Preferences::Config& cfg);
     void templatesChanged(const Templates::Config& cfg);
     void clientDoubleClicked(QListWidgetItem* item);
+    void configurationAdded(const Configuration::Item& item);
+    void configurationEdited(const Configuration::Item& item);
 
     void startBroadcast();
     void stopBroadcast();
@@ -81,6 +85,8 @@ private:
 
     Preferences::Config prefs;
     Templates::Config temps;
+    QVector<Configuration::Item> configs;
+
     QMap<int32_t, QString> chosenTemplates;
 
     MessagePortLocal messagePort;
