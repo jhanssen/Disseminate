@@ -82,6 +82,8 @@ private:
 
     void launchClients();
 
+    void terminate(const QString client);
+
     const Configuration::Item* currentConfiguration();
 
 private:

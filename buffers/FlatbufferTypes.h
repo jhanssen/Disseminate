@@ -10,7 +10,8 @@ enum {
     RemoteRemove = 4,
     RemoteClear = 5,
     KeyEvent = 6,
-    Settings = 7
+    Settings = 7,
+    Terminate = 8
 };
 }
 }

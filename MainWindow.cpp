@@ -87,6 +87,7 @@ MainWindow::~MainWindow()
 {
     //broadcast::stop();
     //broadcast::cleanup();
+    stopBroadcast();
     delete ui;
 }
 
@@ -127,6 +128,18 @@ void MainWindow::startBroadcast()
     launchClients();
 }
 
+void MainWindow::terminate(const QString client)
+{
+    // find the uuid
+    const auto c = client.toStdString();
+    for (auto p : remotePorts) {
+        if (p.second.client == c) {
+            p.second.port->send(Disseminate::FlatbufferTypes::Terminate);
+            break;
+        }
+    }
+}
+
 void MainWindow::stopBroadcast()
 {
     if (!broadcasting)
@@ -136,6 +149,19 @@ void MainWindow::stopBroadcast()
 #warning implement me
     //broadcast::stop();
     broadcasting = false;
+
+    // Qt sucks balls, why can't I get a pair from QMap in a ranged for loop???
+    {
+        auto r = running.begin();
+        const auto end = running.end();
+        while (r != end) {
+            terminate(r.key());
+            (*r)->waitForFinished();
+            ++r;
+        }
+    }
+    qDeleteAll(running);
+    running.clear();
 }
 
 void MainWindow::launchClients()
@@ -540,10 +566,6 @@ void MainWindow::applyConfig()
 
 void MainWindow::reloadClients()
 {
-    const bool cap = broadcasting;
-    if (cap)
-        stopBroadcast();
-
     ui->clientList->clear();
     for (auto& remote : remotePorts) {
         const auto& info = getInformation(remote.first);
@@ -553,9 +575,6 @@ void MainWindow::reloadClients()
             ui->clientList->addItem(new ClientItem(text, info.title, remote.first, info.windowId, info.icon));
         }
     }
-
-    if (cap)
-        startBroadcast();
 }
 
 void MainWindow::updateBindings()

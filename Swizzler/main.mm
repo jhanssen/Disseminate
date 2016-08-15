@@ -165,6 +165,9 @@ static Context context;
                                 context.lua->processSettings(event);
                                 loop->wakeup();
                                 break; }
+                            case Disseminate::FlatbufferTypes::Terminate:
+                                [[NSApplication sharedApplication] terminate:[NSApplication sharedApplication]];
+                                break;
                             default:
                                 break;
                             }
