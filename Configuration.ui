@@ -6,77 +6,75 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>571</width>
-    <height>504</height>
+    <width>703</width>
+    <height>652</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Configuration</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
+  <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QGroupBox" name="applicationGroup">
-       <property name="title">
-        <string>Application</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QListWidget" name="application"/>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QPushButton" name="addApplication">
-            <property name="text">
-             <string>Add</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="removeApplication">
-            <property name="text">
-             <string>Remove</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
+    <widget class="QGroupBox" name="applicationGroup">
+     <property name="title">
+      <string>Application</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="IconLabel" name="application" native="true">
+	<property name="sizePolicy">
+	 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+	  <horstretch>4</horstretch>
+	  <verstretch>0</verstretch>
+	 </sizepolicy>
+	</property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="selectApplication">
+	<property name="sizePolicy">
+	 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+	  <horstretch>1</horstretch>
+	  <verstretch>0</verstretch>
+	 </sizepolicy>
+	</property>
+	<property name="text">
+	 <string>Select</string>
+	</property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="clientsGroup">
+     <property name="title">
+      <string>Clients</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QListWidget" name="clients"/>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+	<item>
+	 <widget class="QPushButton" name="addClient">
+	  <property name="text">
+	   <string>Add</string>
+	  </property>
+	 </widget>
+	</item>
+	<item>
+	 <widget class="QPushButton" name="removeClient">
+	  <property name="text">
+	   <string>Remove</string>
+	  </property>
+	 </widget>
+	</item>
        </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="clientsGroup">
-       <property name="title">
-        <string>Clients</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <item>
-         <widget class="QListWidget" name="clients"/>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <widget class="QPushButton" name="addClient">
-            <property name="text">
-             <string>Add</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="removeClient">
-            <property name="text">
-             <string>Remove</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-     </item>
-    </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -90,6 +88,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>IconLabel</class>
+   <extends>QWidget</extends>
+   <header>IconLabel.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

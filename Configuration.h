@@ -16,7 +16,7 @@ public:
     ~Configuration();
 
 private slots:
-    void addApplication();
+    void selectApplication();
 
 private:
     Ui::Configuration *ui;

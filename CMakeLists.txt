@@ -51,6 +51,7 @@ set(SOURCES
     main.cpp
     Configuration.mm
     MainWindow.cpp
+    IconLabel.cpp
     Utils.mm
     ProcessInformation.mm
     KeyInput.cpp

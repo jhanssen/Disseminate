@@ -1,4 +1,5 @@
 #include "Configuration.h"
+#include "Helpers.h"
 #include "ui_Configuration.h"
 #include <CocoaUtils.h>
 #include <QtMac>
@@ -10,7 +11,7 @@ Configuration::Configuration(QWidget *parent) :
     ui(new Ui::Configuration)
 {
     ui->setupUi(this);
-    connect(ui->addApplication, &QPushButton::clicked, this, &Configuration::addApplication);
+    connect(ui->selectApplication, &QPushButton::clicked, this, &Configuration::selectApplication);
 }
 
 Configuration::~Configuration()
@@ -18,12 +19,12 @@ Configuration::~Configuration()
     delete ui;
 }
 
-void Configuration::addApplication()
+void Configuration::selectApplication()
 {
     ScopedPool pool;
 
     NSOpenPanel *openPanel = [NSOpenPanel openPanel];
-    [openPanel setAllowedFileTypes:[NSArray arrayWithObjects:@"app", nil]];
+    [openPanel setAllowedFileTypes:[[NSArray arrayWithObjects:@"app", nil] autorelease]];
     [openPanel setAllowsMultipleSelection:NO];
     [openPanel setTreatsFilePackagesAsDirectories:NO];
     [openPanel setTitle:@"Select Application"];
@@ -33,10 +34,10 @@ void Configuration::addApplication()
 
     if (result == NSFileHandlingPanelOKButton) {
         NSArray *URLs = [openPanel URLs];
-        NSLog(@"URLs == %@", URLs);
         for (NSURL *URL in URLs) {
             const QString path = QString::fromNSString(URL.path);
-            QListWidgetItem* item = new QListWidgetItem(path, ui->application);
+
+            ui->application->setText(path);
 
             NSBundle* bundle = [[NSBundle bundleWithURL:URL] autorelease];
             if (bundle) {
@@ -46,7 +47,7 @@ void Configuration::addApplication()
                     if (appIcon) {
                         NSRect iconRect = NSMakeRect(0, 0, appIcon.size.width, appIcon.size.height);
                         CGImageRef cgIcon = [appIcon CGImageForProposedRect:&iconRect context:NULL hints:nil];
-                        item->setIcon(QtMac::fromCGImageRef(cgIcon));
+                        ui->application->setIcon(QtMac::fromCGImageRef(cgIcon));
                     }
                 }
             }
