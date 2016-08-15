@@ -178,7 +178,23 @@ static Context context;
 
                     const pid_t pid = getpid();
                     MessagePortRemote remote("jhanssen.disseminate.server");
-                    if (!remote.send(pid, toVector(uuid))) {
+
+                    Disseminate::RemoteAdd::EventT addEvent;
+                    {
+                        addEvent.uuid = uuid;
+                        const char* client = getenv("DISSEMINATE_CLIENT");
+                        if (client)
+                            addEvent.client = client;
+                    }
+
+                    flatbuffers::FlatBufferBuilder builder;
+                    auto buffer = Disseminate::RemoteAdd::CreateEvent(builder, &addEvent);
+                    builder.Finish(buffer);
+
+                    std::vector<uint8_t> message(builder.GetBufferPointer(),
+                                                 builder.GetBufferPointer() + builder.GetSize());
+
+                    if (!remote.send(pid, message)) {
                         printf("couldn't inform server\n");
                         //context.port.reset();
                         return;

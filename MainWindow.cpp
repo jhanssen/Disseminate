@@ -66,10 +66,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionEditConfiguration, &QAction::triggered, this, &MainWindow::editConfiguration);
 
     messagePort.onMessage([this](int32_t id, const std::vector<uint8_t>& msg) {
-            const std::string name(reinterpret_cast<const char*>(&msg[0]), msg.size());
-            printf("got message %d -> %s\n", id, name.c_str());
+            const auto remoteAdd = Disseminate::RemoteAdd::GetEvent(&msg[0])->UnPack();
+            printf("got message %d -> %s\n", id, remoteAdd->uuid.c_str());
 
-            auto remote = std::make_shared<MessagePortRemote>(name);
+            auto remote = std::make_shared<MessagePortRemote>(remoteAdd->uuid);
             // std::weak_ptr<MessagePortRemote> weak = remote;
             remote->onInvalidated([this, id/*, weak*/]() {
                     // if (auto shared = weak.lock()) {
@@ -78,7 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
                     remotePorts.erase(id);
                     reloadClients();
                 });
-            remotePorts[id] = { name, 0, remote };
+            remotePorts[id] = { remoteAdd->uuid, remoteAdd->client, 0, remote };
             reloadClients();
         });
 }
@@ -549,7 +549,7 @@ void MainWindow::reloadClients()
         const auto& info = getInformation(remote.first);
         remote.second.windowId = info.windowId;
         if (!info.title.isEmpty()) {
-            QString text = info.title + " (" + QString::number(info.windowId) + ")";
+            QString text = info.title + " - " + QString::fromStdString(remote.second.client) + " (" + QString::number(info.windowId) + ")";
             ui->clientList->addItem(new ClientItem(text, info.title, remote.first, info.windowId, info.icon));
         }
     }

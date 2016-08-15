@@ -98,7 +98,7 @@ private:
 
     struct RemotePort
     {
-        std::string uuid;
+        std::string uuid, client;
         uint64_t windowId;
         std::shared_ptr<MessagePortRemote> port;
     };

@@ -3,6 +3,7 @@ namespace Disseminate.RemoteAdd;
 table Event
 {
     uuid: string;
+    client: string;
 }
 
 root_type Event;
