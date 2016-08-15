@@ -176,8 +176,6 @@ void MainWindow::launchClients()
                 proc->setProcessEnvironment(env);
                 proc->start(app);
 
-                QMessageBox::critical(0, app, app);
-
                 running[client] = proc;
             }
         }
